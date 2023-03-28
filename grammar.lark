@@ -24,6 +24,9 @@ EXIT : "exit"i
 CREATE : "create"i
 DROP : "drop"i
 DESC : "desc"i
+DESCRIBE : "describe"i
+EXPLAIN : "explain"i
+UPDATE : "update"i
 SHOW : "show"i
 TABLE : "table"i
 TABLES : "tables"i
@@ -42,6 +45,8 @@ OR : "or"i
 AND : "and"i
 // change to comp_op if error happens
 COMP_OP : "<" | ">" | "=" | ">=" | "<=" | "!="
+EQ: "="
+SET: "set"i
 INSERT : "insert"i
 INTO : "into"i
 VALUES : "values"i
@@ -54,7 +59,12 @@ query_list : (query ";")+
 query : create_table_query
       | select_query
       | insert_query
-
+      | drop_query
+      | explain_query
+      | describe_query
+      | show_query
+      | delete_query
+      | update_query
 
 // CREATE TABLE
 create_table_query : CREATE TABLE table_name table_element_list
@@ -76,7 +86,11 @@ column_name : IDENTIFIER
 
 
 // DROP TABLE, EXPLAIN, DESCRIBE, DESC, SHOW TABLES
-
+drop_query: DROP TABLE table_name
+explain_query: EXPLAIN table_name
+describe_query: DESCRIBE table_name
+              | DESC table_name
+show_query: SHOW TABLES
 
 // SELECT
 select_query : SELECT select_list table_expression
@@ -105,7 +119,12 @@ null_operation : IS [NOT] NULL
 
 
 // INSERT
+insert_query: INSERT INTO table_name [column_name_list] VALUES table_element_list
 
 // DELETE
+delete_query: DELETE FROM table_name [where_clause]
 
 // UPDATE TABLES
+// update table_name set column_name = comparable_value [where clause];
+update_query: UPDATE table_name SET set_list [where_clause]
+set_list: column_name EQ comparable_value ("," set_list)*
