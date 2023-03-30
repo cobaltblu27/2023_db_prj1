@@ -1,4 +1,5 @@
 import sys
+import argparse
 from typing import Generator
 from lark import Lark, Transformer, ParseTree, exceptions, Token
 
@@ -15,6 +16,9 @@ query_node_map = {
     'update_query': 'UPDATE',
 }
 EXIT = 'EXIT'
+
+arg_parser = argparse.ArgumentParser()
+arg_parser.add_argument("-t", "--test", type=str, help="test string")
 
 
 class MyTransformer(Transformer):
@@ -78,15 +82,15 @@ if __name__ == "__main__":
         sql_parser = Lark(file.read(), start="command", lexer="basic")
 
     transformer = MyTransformer()
-    _test = False
-    if _test:
-        # output: ParseTree = sql_parser.parse("select ID from student;")
-        output: ParseTree = sql_parser.parse("desc asdf;")
-        print("----------Parsed result----------")
-        # print(output.pretty())
-        print(get_query_description(output))
-        # print("{} {}".format(PROMPT, output.children))
 
-        transformer.transform(output)
+    args = arg_parser.parse_args()
+    test_str = args.test
+
+    if test_str is not None:
+        output: ParseTree = sql_parser.parse(test_str)
+        print("----------Parsed result----------")
+        print(output.pretty())
+        print("----------Tree----------")
+        print(output)
     else:
         prompt(sql_parser, transformer)

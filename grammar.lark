@@ -44,7 +44,7 @@ IS : "is"i
 OR : "or"i
 AND : "and"i
 // change to comp_op if error happens
-COMP_OP : "<" | ">" | "=" | ">=" | "<=" | "!="
+comp_op : "<" | ">" | "=" | ">=" | "<=" | "!="
 EQ: "="
 SET: "set"i
 INSERT : "insert"i
@@ -110,7 +110,7 @@ boolean_test : predicate
 parenthesized_boolean_expr : LP boolean_expr RP
 predicate : comparison_predicate
           | null_predicate
-comparison_predicate : comp_operand COMP_OP comp_operand
+comparison_predicate : comp_operand comp_op comp_operand
 comp_operand : comparable_value
              | [table_name "."] column_name
 comparable_value : INT | STR | DATE
