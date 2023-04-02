@@ -62,6 +62,7 @@ query : create_table_query
       | drop_query
       | explain_query
       | describe_query
+      | desc_query
       | show_query
       | delete_query
       | update_query
@@ -89,7 +90,7 @@ column_name : IDENTIFIER
 drop_query: DROP TABLE table_name
 explain_query: EXPLAIN table_name
 describe_query: DESCRIBE table_name
-              | DESC table_name
+desc_query: DESC table_name
 show_query: SHOW TABLES
 
 // SELECT
