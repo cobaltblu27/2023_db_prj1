@@ -1,77 +1,18 @@
-from berkeleydb import db
-import berkeleydb
-import os
-import sys
 import argparse
-from typing import Generator, List
-from lark import Lark, Transformer, ParseTree, exceptions, Token
+import sys
+from typing import Generator
+
+from lark import Lark, Transformer, ParseTree, exceptions
+
+from src.Schema import Schema
+from src.SqlTransformer import SqlTransformer
 
 PROMPT = "DB_2016-19965>"
-DB_DIR = "db_dir"
 
 # (테스트용) argument로 query를 받을 수 있게 하였다.
 arg_parser = argparse.ArgumentParser()
 arg_parser.add_argument("-t", "--test", type=str, help="test string")
-
-
-# 명령어에 따라 어떤 명령어가 요청되었는지 출력하도록 한다.
-class SqlTransformer(Transformer):
-    def __init__(self):
-        super().__init__()
-        if not os.path.exists(DB_DIR):
-            os.makedirs(DB_DIR)
-
-        self._env = db.DBEnv()
-        self._env.open(os.path.join(os.getcwd(), 'db_dir'), db.DB_CREATE | db.DB_INIT_MPOOL)
-        self.db = db.DB(self._env)
-        self.db.open('my_db.db', db.DB_BTREE, db.DB_CREATE)
-        # myDB.get(b"a")
-        # print(self.db.get(b"a"))
-
-    def __del__(self):
-        self._env.close()
-        self.db.close()
-        pass
-
-    def _schema_to_json(self):
-        pass
-
-    def _print_log(self, query: str):
-        print("{} '{}' requested".format(PROMPT, query))
-
-    def create_table_query(self, items: List[Token]):
-        print(items[0].__class__.__name__)
-        self._print_log("CREATE TABLE")
-    
-    def select_query(self, items: List[Token]):
-        self._print_log("SELECT")
-
-    def insert_query(self, items: List[Token]):
-        self._print_log("INSERT")
-
-    def drop_query(self, items: List[Token]):
-        self._print_log("DROP TABLE")
-
-    def explain_query(self, items: List[Token]):
-        self._print_log("EXPLAIN")
-
-    def describe_query(self, items: List[Token]):
-        self._print_log("DESCRIBE")
-
-    def desc_query(self, items: List[Token]):
-        self._print_log("DESC")
-
-    def show_query(self, items: List[Token]):
-        self._print_log("SHOW")
-
-    def delete_query(self, items: List[Token]):
-        self._print_log("DELETE")
-
-    def update_query(self, items: List[Token]):
-        self._print_log("UPDATE")
-
-    def EXIT(self, items: List[Token]):
-        sys.exit()
+# arg_parser.add_argument("-d", "--debug", type=bool, help="show tree and parsed result")
 
 
 # semicolon 기준으로 쿼리를 분리하여 parser에 넣을 str을 생성해 주는 generator
@@ -115,10 +56,11 @@ if __name__ == "__main__":
     test_str = args.test
 
     if test_str is not None:
-        output: ParseTree = sql_parser.parse(test_str)
-        print("----------Parsed result----------")
-        print(output.pretty())
-        print("----------Tree----------")
-        print(output)
+        tree: ParseTree = sql_parser.parse(test_str)
+        # print("----------Parsed result----------")
+        # print(tree.pretty())
+        # print("----------Tree----------")
+        # print(tree)
+        transformer.transform(tree)
     else:
         prompt(sql_parser, transformer)
