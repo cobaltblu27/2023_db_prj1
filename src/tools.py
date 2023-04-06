@@ -1,10 +1,13 @@
 from typing import List
 
+from lark import Tree
+
 ENCODING = "utf-8"
 
 
-def s2b(string: str) -> bytes:
-    return string.encode(ENCODING)
+def s2b(*strings) -> bytes:
+    key = "$$".join(strings)
+    return key.encode(ENCODING)
 
 
 def db_keys(db):
@@ -23,6 +26,26 @@ def _print_separator(column_widths: List[int]):
     for width in column_widths:
         print('+' + '-' * (width + 2), end='')
     print('+')
+
+
+# tree_to_column_list input example:
+# Tree(
+#   Token('RULE', 'column_name_list'),
+#   [
+#     Token('LP', '('),
+#     Tree(
+#       Token('RULE', 'column_name'),
+#       [Token('IDENTIFIER', 'id')]
+#     ),
+#     Tree(
+#       Token('RULE', 'column_name'),
+#       [Token('IDENTIFIER', 'name')]
+#     ),
+#     Token('RP', ')')
+#   ]
+# )
+def tree_to_column_list(tree) -> List[str]:
+    return [col.children[0].value for col in tree.find_data("column_name")]
 
 
 def print_table(table: List[List[str]]):

@@ -1,13 +1,11 @@
-import json
 import os
 import sys
-from typing import List
 
 from berkeleydb import db
-from lark import Transformer, Token
+from lark import Transformer
 
-from src.Schema import Schema, ColumnDict, ColumnSpec
-from src.tools import s2b, db_keys, print_table, ENCODING, print_desc
+from src.Schema import Schema, ColumnDict, ColumnSpec, KeySpec, ForeignKey
+from src.tools import db_keys, print_desc, tree_to_column_list
 
 DB_DIR = "DB"
 SCHEMA_DB = 'schema.db'
@@ -43,7 +41,6 @@ class SqlTransformer(Transformer):
         table_name = items[2].children[0].lower()
         column_definition_iter = list(items[3].find_data("column_definition"))
         column_dict: ColumnDict = {}
-
         for col in column_definition_iter:
             col_name = list(col.find_data("column_name"))[0].children[0].value
             attr_type = list(col.find_data("data_type"))[0].children[0].value
@@ -58,15 +55,31 @@ class SqlTransformer(Transformer):
             }
             column_dict[col_name] = spec
 
-        for constr in items[3].find_data("table_constraint_definition"):
-            p_key = list(constr.find_data("primary_key_constraint"))
-            f_key = list(constr.find_data("referential_constraint"))
+        key_spec: KeySpec = {
+            "primary_key": [],
+            "foreign_key": []
+        }
+        for constraint in items[3].find_data("table_constraint_definition"):
+            p_key = list(constraint.find_data("primary_key_constraint"))
+            f_key = list(constraint.find_data("referential_constraint"))
             if p_key:
-                print(p_key[0])
+                col_list = tree_to_column_list(p_key[0].children[2])
+                if key_spec['primary_key']:
+                    # TODO: duplicate pkey
+                    pass
+                key_spec['primary_key'] = col_list
             elif f_key:
-                print(f_key[0])
+                col_list = tree_to_column_list(f_key[0].children[2])
+                ref_table = f_key[0].children[4].children[0]
+                ref_columns = tree_to_column_list(f_key[0].children[5])
+                foreign_key_constraint: ForeignKey = {
+                    "columns": col_list,
+                    "table": ref_table,
+                    "ref_columns": ref_columns
+                }
+                key_spec['foreign_key'].append(foreign_key_constraint)
 
-        schema = Schema(table_name, column_dict)
+        schema = Schema(table_name, column_dict, key_spec)
         schema.commit_schema(self.schema_db)
         self._print_log("CREATE TABLE")
 
@@ -80,23 +93,7 @@ class SqlTransformer(Transformer):
         self._print_log("DROP TABLE")
 
     def _describe_db(self, name: str):
-        col_raw: bytes = self.schema_db.get(s2b(name))
-        cols: ColumnDict = json.loads(col_raw.decode(ENCODING))
-        table = [
-            ["table_name", name, '', ''],
-            ["column_name", "type", "null", "key"]
-        ]
-        for key in list(cols):
-            col_type = cols[key]['type']
-            if col_type == "char":
-                col_type = "char({})".format(cols[key]['length'])
-            desc_row = [
-                key,
-                col_type,
-                "not null" if cols[key]['non_null'] else "",
-                ""]
-            table.append(desc_row)
-        print_desc(table)
+        Schema.schema_from_key(self.schema_db, name).describe()
 
     def explain_query(self, items):
         table = items[1].children[0].value
