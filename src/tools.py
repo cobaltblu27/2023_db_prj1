@@ -1,6 +1,5 @@
 from typing import List
 
-
 ENCODING = "utf-8"
 
 

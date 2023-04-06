@@ -9,7 +9,7 @@ from lark import Transformer, Token
 from src.Schema import Schema, ColumnDict, ColumnSpec
 from src.tools import s2b, db_keys, print_table, ENCODING, print_desc
 
-DB_DIR = "../DB"
+DB_DIR = "DB"
 SCHEMA_DB = 'schema.db'
 MAIN_DB = 'db.db'
 
@@ -41,24 +41,31 @@ class SqlTransformer(Transformer):
 
     def create_table_query(self, items):
         table_name = items[2].children[0].lower()
-        # print(items)
         column_definition_iter = list(items[3].find_data("column_definition"))
         column_dict: ColumnDict = {}
+
         for col in column_definition_iter:
             col_name = list(col.find_data("column_name"))[0].children[0].value
             attr_type = list(col.find_data("data_type"))[0].children[0].value
             not_null = str(col.children[2]).upper() == "NOT" and \
-                str(col.children[3]).upper() == "NULL"
+                       str(col.children[3]).upper() == "NULL"
             length = None if attr_type.lower() != "char" else \
                 list(col.find_data("data_type"))[0].children[2].value
             spec: ColumnSpec = {
                 "type": attr_type,
                 "length": length,
-                "constraints": []
+                "non_null": not_null,
             }
-            if not_null:
-                spec["constraints"].append("non-null")
             column_dict[col_name] = spec
+
+        for constr in items[3].find_data("table_constraint_definition"):
+            p_key = list(constr.find_data("primary_key_constraint"))
+            f_key = list(constr.find_data("referential_constraint"))
+            if p_key:
+                print(p_key[0])
+            elif f_key:
+                print(f_key[0])
+
         schema = Schema(table_name, column_dict)
         schema.commit_schema(self.schema_db)
         self._print_log("CREATE TABLE")
@@ -80,13 +87,13 @@ class SqlTransformer(Transformer):
             ["column_name", "type", "null", "key"]
         ]
         for key in list(cols):
-            col_type = cols[key]["type"]
+            col_type = cols[key]['type']
             if col_type == "char":
-                col_type = "char({})".format(cols[key]["length"])
+                col_type = "char({})".format(cols[key]['length'])
             desc_row = [
                 key,
                 col_type,
-                "not null" if "non-null" in cols[key]["constraints"] else "",
+                "not null" if cols[key]['non_null'] else "",
                 ""]
             table.append(desc_row)
         print_desc(table)

@@ -1,5 +1,3 @@
-
-
 class SyntaxError(Exception):
     pass
 
@@ -62,4 +60,3 @@ class InsertResult(Exception):
 
 class SelectTableExistenceError(Exception):
     pass
-

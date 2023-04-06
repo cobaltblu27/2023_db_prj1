@@ -12,6 +12,8 @@ PROMPT = "DB_2016-19965>"
 # (테스트용) argument로 query를 받을 수 있게 하였다.
 arg_parser = argparse.ArgumentParser()
 arg_parser.add_argument("-t", "--test", type=str, help="test string")
+
+
 # arg_parser.add_argument("-d", "--debug", type=bool, help="show tree and parsed result")
 
 

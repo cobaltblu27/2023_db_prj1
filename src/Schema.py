@@ -11,7 +11,7 @@ Constraints = Literal["non-null", "p_key", "f_key"]
 class ColumnSpec(TypedDict):
     type: AttributeType
     length: Union[None, int]
-    constraints: List[Constraints]
+    non_null: bool
 
 
 ColumnDict = Dict[str, ColumnSpec]
@@ -21,6 +21,7 @@ class Schema:
     def __init__(self, name: str, columns: ColumnDict):
         self.name: str = name
         self.columns = columns
+        self.constraints = {}
 
     def get_key(self, attr: str) -> bytes:
         return s2b("{}$${}".format(self.name, attr))

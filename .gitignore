@@ -4,3 +4,4 @@ venv
 db_dir/
 __pycache__/
 .DS_Store
+DB/
