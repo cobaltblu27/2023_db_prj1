@@ -56,6 +56,8 @@ if __name__ == "__main__":
     test_str = args.test
 
     if test_str is not None:
+        print("requested:")
+        print(test_str)
         tree: ParseTree = sql_parser.parse(test_str)
         # print("----------Parsed result----------")
         # print(tree.pretty())

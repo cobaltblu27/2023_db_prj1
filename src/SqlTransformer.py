@@ -41,6 +41,7 @@ class SqlTransformer(Transformer):
 
     def create_table_query(self, items):
         table_name = items[2].children[0].lower()
+        # print(items)
         column_definition_iter = list(items[3].find_data("column_definition"))
         column_dict: ColumnDict = {}
         for col in column_definition_iter:
@@ -48,8 +49,11 @@ class SqlTransformer(Transformer):
             attr_type = list(col.find_data("data_type"))[0].children[0].value
             not_null = str(col.children[2]).upper() == "NOT" and \
                 str(col.children[3]).upper() == "NULL"
+            length = None if attr_type.lower() != "char" else \
+                list(col.find_data("data_type"))[0].children[2].value
             spec: ColumnSpec = {
                 "type": attr_type,
+                "length": length,
                 "constraints": []
             }
             if not_null:
@@ -76,9 +80,12 @@ class SqlTransformer(Transformer):
             ["column_name", "type", "null", "key"]
         ]
         for key in list(cols):
+            col_type = cols[key]["type"]
+            if col_type == "char":
+                col_type = "char({})".format(cols[key]["length"])
             desc_row = [
                 key,
-                cols[key]["type"],
+                col_type,
                 "not null" if "non-null" in cols[key]["constraints"] else "",
                 ""]
             table.append(desc_row)

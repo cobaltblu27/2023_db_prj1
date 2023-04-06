@@ -1,5 +1,5 @@
 import json
-from typing import Dict, Literal, TypedDict, List
+from typing import Dict, Literal, TypedDict, List, Union
 import berkeleydb
 
 from src.tools import s2b
@@ -10,6 +10,7 @@ Constraints = Literal["non-null", "p_key", "f_key"]
 
 class ColumnSpec(TypedDict):
     type: AttributeType
+    length: Union[None, int]
     constraints: List[Constraints]
 
 
