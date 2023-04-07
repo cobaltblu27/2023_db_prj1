@@ -62,11 +62,13 @@ def print_table(table: List[List[str]]):
     height = len(table[0])
     column_widths = [max(len(str(row[i])) for row in table) for i in range(height)]
     _print_separator(column_widths)
-    for row in table:
-        for i, cell in enumerate(row):
-            print('|', f"{cell: <{column_widths[i]}}", end=' ')
+    for i, row in enumerate(table):
+        for j, cell in enumerate(row):
+            print('|', f"{cell: <{column_widths[j]}}", end=' ')
         print('|')
-        _print_separator(column_widths)
+        if i == 0:
+            _print_separator(column_widths)
+    _print_separator(column_widths)
 
 
 def print_desc(table: List[List[str]]):

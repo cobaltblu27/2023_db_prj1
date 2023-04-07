@@ -9,17 +9,14 @@ create table school (
   created_at date,
   primary key (name)
 );
-create table student (
-  id INT not null, name char(32) not null,
-  school_name char(16) not null,
-  created_at date,
-  primary key (id, name),
-  foreign key (school_name) references school(name)
+insert into school values(
+  \"Abydos\",
+  2019-01-01
 );
-"
-
-python run.py -t "
-show tables;
-explain school;
-explain student; 
+select * from school;
+insert into school (name, created_at) values(
+  \"Trinity\",
+  1980-01-01
+);
+select * from school;
 "

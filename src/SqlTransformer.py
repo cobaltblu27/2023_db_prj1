@@ -7,7 +7,7 @@ from lark import Transformer
 
 from src.Schema import Schema, ColumnDict, ColumnSpec, KeySpec, ForeignKey
 from src.errors import *
-from src.tools import db_keys, print_desc, tree_to_column_list, db_clear
+from src.tools import db_keys, print_desc, tree_to_column_list, db_clear, print_table
 
 DB_DIR = "DB"
 SCHEMA_DB = 'schema.db'
@@ -61,7 +61,7 @@ class SqlTransformer(Transformer):
             col_name = list(col.find_data("column_name"))[0].children[0].value
             attr_type = list(col.find_data("data_type"))[0].children[0].value
             not_null = str(col.children[2]).upper() == "NOT" and \
-                str(col.children[3]).upper() == "NULL"
+                       str(col.children[3]).upper() == "NULL"
             length = None if attr_type.lower() != "char" else \
                 int(list(col.find_data("data_type"))[0].children[2].value)
             if length is not None and length < 1:
@@ -106,7 +106,7 @@ class SqlTransformer(Transformer):
 
                 if any([ref_col not in ref_schema.columns for ref_col in ref_columns]):
                     raise ReferenceColumnExistenceError
-                if ref_columns != ref_schema.get_pkey_list():
+                if ref_columns != ref_schema.get_pkey_col_list():
                     raise ReferenceNonPrimaryKeyError
                 if len(col_list) != len(ref_columns):
                     raise ReferenceTypeError
@@ -115,7 +115,8 @@ class SqlTransformer(Transformer):
                         raise NonExistingColumnDefError
                     col_spec = column_dict[col_list[i]]
                     ref_col_spec = ref_schema.columns[ref_columns[i]]
-                    if col_spec != ref_col_spec:
+                    if col_spec['type'] != ref_col_spec['type'] or \
+                            col_spec['length'] != ref_col_spec['length']:
                         raise ReferenceTypeError
 
                 key_spec['foreign_key'].append(foreign_key_constraint)
@@ -124,12 +125,39 @@ class SqlTransformer(Transformer):
         schema.commit_schema(self.schema_db)
 
     def select_query(self, items):
-        self._print_log("SELECT")
+        table_name = list(items[2].find_data("table_name"))[0].children[0]
+        target_schema = Schema.schema_from_key(self.schema_db, table_name)
+        refs = target_schema.get_row_refs(self.db)
+        result = [target_schema.select(self.db, ref) for ref in refs]
+
+        columns_names = list(target_schema.columns.keys())
+        result_table = [columns_names]
+        for row in result:
+            result_table.append([row[column] for column in columns_names])
+        print_table(result_table)
 
     def insert_query(self, items):
-        self._print_log("INSERT")
+        columns_specs_token = items[3]
+        table_name = list(items[2].find_data("table_name"))[0].children[0]
+        if table_name not in self._get_table_names():
+            raise NoSuchTable
+        target_schema = Schema.schema_from_key(self.schema_db, table_name)
+        column_specs: List[str] = list(target_schema.columns.keys())
+        if columns_specs_token is not None:
+            column_specs = [col.children[0].value for col in items[3].find_data("column_name")]
+        column_values = [col.children[0].value for col in items[5].find_data("comparable_value")]
+        column_dict = {}
+        for i, column in enumerate(column_specs):
+            column_dict[column] = column_values[i]
+
+        # TODO: add validation. As of prj1-2, no validation is needed
+        target_schema.insert(self.db, column_dict)
 
     def drop_query(self, items):
+        table_to_drop = items[2].children[0].lower()
+        table_names = self._get_table_names()
+        if table_to_drop not in table_names:
+            raise NoSuchTable
         self._print_log("DROP TABLE")
 
     def _describe_db(self, name: str):

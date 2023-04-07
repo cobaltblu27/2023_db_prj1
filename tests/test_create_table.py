@@ -1,27 +1,12 @@
 import pytest
-from lark import Lark
-from lark.exceptions import VisitError
 
-from src.SqlTransformer import SqlTransformer
 from src.errors import *
-
-transformer = SqlTransformer()
-with open('grammar.lark') as file:
-    sql_parser: Lark = Lark(file.read(), start="command", lexer="basic")
+from tests.common import run, pytest_reset
 
 
 @pytest.fixture(autouse=True)
 def before_each():
-    global transformer
-    transformer.TEST_reset_db()
-
-
-def run(sql: str):
-    tree = sql_parser.parse(sql)
-    try:
-        transformer.transform(tree)
-    except VisitError as e:
-        raise e.orig_exc
+    pytest_reset()
 
 
 create_school = """
@@ -70,7 +55,7 @@ def test_duplicate_pkeys():
         run(sql)
 
 
-def test_foreign_key_type_nullable():
+def test_foreign_key_type_allow_nullable():
     run(create_school)
     foreign_key_sql_wrong_type_nullable = """
     create table club (
@@ -80,8 +65,7 @@ def test_foreign_key_type_nullable():
       foreign key (school_name) references school(name)
     ); 
     """
-    with pytest.raises(ReferenceTypeError):
-        run(foreign_key_sql_wrong_type_nullable)
+    run(foreign_key_sql_wrong_type_nullable)
 
 
 def test_foreign_key_type_length():

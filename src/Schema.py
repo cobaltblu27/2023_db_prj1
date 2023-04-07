@@ -39,14 +39,33 @@ class Schema:
     def get_key(self, attr: str) -> bytes:
         return s2b(self.name, attr)
     
-    def get_pkey_list(self) -> List[str]:
+    def get_pkey_col_list(self) -> List[str]:
         return self.key_spec["primary_key"]
+
+    # store list of each row's pkeys into db for keeping reference to each rows
+    def get_row_refs(self, db: berkeleydb.db.DB):
+        ref_list = db.get(s2b(self.name, "pkeys"))
+        if ref_list is None:
+            return []
+        return json.loads(ref_list.decode(ENCODING))
 
     def commit_schema(self, schema_db: berkeleydb.db.DB):
         column_key = s2b(self.name, "columns")
         key_spec_key = s2b(self.name, "key_spec")
         schema_db.put(column_key, s2b(json.dumps(self.columns)))
         schema_db.put(key_spec_key, s2b(json.dumps(self.key_spec)))
+
+    def insert(self, db: berkeleydb.db.DB, column: Dict[str, Union[int, str]]):
+        p_key_list = self.get_pkey_col_list()
+        row_refs = self.get_row_refs(db)
+        p_key_values = [column[k] for k in p_key_list]
+        db.put(s2b(self.name, *p_key_values), s2b(json.dumps(column)))
+        db.put(s2b(self.name, "pkeys"), s2b(json.dumps([p_key_values] + row_refs)))
+
+    def select(self, db: berkeleydb.db.DB, p_key_values) -> Dict[str, Union[int, str]]:
+        value_raw = db.get(s2b(self.name, *p_key_values))
+        value_dict = json.loads(value_raw.decode(ENCODING))
+        return value_dict
 
     def describe(self):
         table = [
