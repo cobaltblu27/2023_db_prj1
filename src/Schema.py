@@ -38,6 +38,9 @@ class Schema:
 
     def get_key(self, attr: str) -> bytes:
         return s2b(self.name, attr)
+    
+    def get_pkey_list(self) -> List[str]:
+        return self.key_spec["primary_key"]
 
     def commit_schema(self, schema_db: berkeleydb.db.DB):
         column_key = s2b(self.name, "columns")

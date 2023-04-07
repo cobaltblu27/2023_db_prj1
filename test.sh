@@ -5,7 +5,7 @@ rm -rf DB
 
 python run.py -t "
 create table school (
-  name char(16) not null,
+  name char(16),
   created_at date,
   primary key (name)
 );

@@ -1,5 +1,6 @@
 from typing import List
 
+import berkeleydb
 from lark import Tree
 
 ENCODING = "utf-8"
@@ -26,6 +27,15 @@ def _print_separator(column_widths: List[int]):
     for width in column_widths:
         print('+' + '-' * (width + 2), end='')
     print('+')
+
+
+def db_clear(db: berkeleydb.db.DB):
+    cursor = db.cursor()
+    record = cursor.first()
+    while record:
+        key, value = record
+        db.delete(key)
+        record = cursor.next()
 
 
 # tree_to_column_list input example:
