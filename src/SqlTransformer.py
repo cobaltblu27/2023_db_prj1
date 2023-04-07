@@ -5,6 +5,7 @@ from berkeleydb import db
 from lark import Transformer
 
 from src.Schema import Schema, ColumnDict, ColumnSpec, KeySpec, ForeignKey
+from src.errors import DuplicateColumnDefError, DuplicatePrimaryKeyDefError, ReferenceTypeError
 from src.tools import db_keys, print_desc, tree_to_column_list
 
 DB_DIR = "DB"
@@ -20,7 +21,8 @@ class SqlTransformer(Transformer):
             os.makedirs(DB_DIR)
 
         self._env = db.DBEnv()
-        self._env.open(os.path.join(os.getcwd(), DB_DIR), db.DB_CREATE | db.DB_INIT_MPOOL)
+        self._env.open(os.path.join(os.getcwd(), DB_DIR),
+                       db.DB_CREATE | db.DB_INIT_MPOOL)
 
         self.schema_db = db.DB(self._env)
         self.schema_db.open(SCHEMA_DB, db.DB_BTREE, db.DB_CREATE)
@@ -45,7 +47,7 @@ class SqlTransformer(Transformer):
             col_name = list(col.find_data("column_name"))[0].children[0].value
             attr_type = list(col.find_data("data_type"))[0].children[0].value
             not_null = str(col.children[2]).upper() == "NOT" and \
-                       str(col.children[3]).upper() == "NULL"
+                str(col.children[3]).upper() == "NULL"
             length = None if attr_type.lower() != "char" else \
                 list(col.find_data("data_type"))[0].children[2].value
             spec: ColumnSpec = {
@@ -53,6 +55,8 @@ class SqlTransformer(Transformer):
                 "length": length,
                 "non_null": not_null,
             }
+            if col_name in column_dict:
+                raise DuplicateColumnDefError
             column_dict[col_name] = spec
 
         key_spec: KeySpec = {
@@ -65,8 +69,7 @@ class SqlTransformer(Transformer):
             if p_key:
                 col_list = tree_to_column_list(p_key[0].children[2])
                 if key_spec['primary_key']:
-                    # TODO: duplicate pkey
-                    pass
+                    raise DuplicatePrimaryKeyDefError
                 key_spec['primary_key'] = col_list
             elif f_key:
                 col_list = tree_to_column_list(f_key[0].children[2])
@@ -77,11 +80,20 @@ class SqlTransformer(Transformer):
                     "table": ref_table,
                     "ref_columns": ref_columns
                 }
+                ref_schema = Schema.schema_from_key(self.schema_db, ref_table)
+
+                if len(col_list) != len(ref_columns):
+                    raise ReferenceTypeError
+                for i in range(len(col_list)):
+                    col_spec = column_dict[col_list[i]]
+                    ref_col_spec = ref_schema.columns[ref_columns[i]]
+                    if col_spec != ref_col_spec:
+                        raise ReferenceTypeError
+
                 key_spec['foreign_key'].append(foreign_key_constraint)
 
         schema = Schema(table_name, column_dict, key_spec)
         schema.commit_schema(self.schema_db)
-        self._print_log("CREATE TABLE")
 
     def select_query(self, items):
         self._print_log("SELECT")
@@ -108,8 +120,11 @@ class SqlTransformer(Transformer):
         self._describe_db(table)
 
     def show_query(self, items):
-        keys = db_keys(self.schema_db)
-        print_desc([[key] for key in keys])
+        keys = filter(
+            lambda k: "columns" in k,
+            db_keys(self.schema_db)
+        )
+        print_desc([[key.split("$$")[0]] for key in keys])
 
     def delete_query(self, items):
         self._print_log("DELETE")
