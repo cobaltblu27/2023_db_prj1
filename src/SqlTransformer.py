@@ -1,13 +1,13 @@
 import os
 import sys
-from typing import List
+from typing import List, Union, cast
 
 from berkeleydb import db
 from lark import Transformer
 
 from src.Schema import Schema, ColumnDict, ColumnSpec, KeySpec, ForeignKey
 from src.errors import *
-from src.tools import db_keys, print_desc, tree_to_column_list, db_clear, print_table
+from src.tools import db_keys, print_desc, s2b, tree_to_column_list, db_clear, print_table
 
 DB_DIR = "DB"
 SCHEMA_DB = 'schema.db'
@@ -50,6 +50,9 @@ class SqlTransformer(Transformer):
             db_keys(self.schema_db)
         )
         return [key.split("$$")[0] for key in keys]
+
+    def _schema_from_key(self, name: str):
+        return Schema.schema_from_key(self.schema_db, name)
 
     def create_table_query(self, items):
         table_name = items[2].children[0].lower()
@@ -102,7 +105,7 @@ class SqlTransformer(Transformer):
                 }
                 if ref_table not in self._get_table_names():
                     raise ReferenceTableExistenceError
-                ref_schema = Schema.schema_from_key(self.schema_db, ref_table)
+                ref_schema = self._schema_from_key(ref_table)
 
                 if any([ref_col not in ref_schema.columns for ref_col in ref_columns]):
                     raise ReferenceColumnExistenceError
@@ -126,12 +129,15 @@ class SqlTransformer(Transformer):
 
     def select_query(self, items):
         table_name = list(items[2].find_data("table_name"))[0].children[0]
+        if table_name not in self._get_table_names():
+            raise SelectTableExistenceError
+
         target_schema = Schema.schema_from_key(self.schema_db, table_name)
         refs = target_schema.get_row_refs(self.db)
         result = [target_schema.select(self.db, ref) for ref in refs]
 
         columns_names = list(target_schema.columns.keys())
-        result_table = [columns_names]
+        result_table = [cast(List[Union[int, str]], columns_names)]
         for row in result:
             result_table.append([row[column] for column in columns_names])
         print_table(result_table)
@@ -141,7 +147,7 @@ class SqlTransformer(Transformer):
         table_name = list(items[2].find_data("table_name"))[0].children[0]
         if table_name not in self._get_table_names():
             raise NoSuchTable
-        target_schema = Schema.schema_from_key(self.schema_db, table_name)
+        target_schema = self._schema_from_key(table_name)
         column_specs: List[str] = list(target_schema.columns.keys())
         if columns_specs_token is not None:
             column_specs = [col.children[0].value for col in items[3].find_data("column_name")]
@@ -156,12 +162,33 @@ class SqlTransformer(Transformer):
     def drop_query(self, items):
         table_to_drop = items[2].children[0].lower()
         table_names = self._get_table_names()
+
         if table_to_drop not in table_names:
             raise NoSuchTable
+        for table_name in table_names:
+            if table_name == table_to_drop:
+                continue
+            table_schema = self._schema_from_key(table_name)
+            for f_key in table_schema.key_spec['foreign_key']:
+                if f_key["table"] == table_to_drop:
+                    raise DropReferencedTableError
+
+        target_schema = self._schema_from_key(table_to_drop)
+        row_refs = target_schema.get_row_refs(self.db)
+        for row in row_refs:
+            target_schema.delete(self.db, row)
+
+        keys_to_delete = filter(
+            lambda k: table_to_drop in k,
+            db_keys(self.schema_db)
+        )
+        for k in keys_to_delete:
+            self.schema_db.delete(s2b(k))
+
         self._print_log("DROP TABLE")
 
     def _describe_db(self, name: str):
-        Schema.schema_from_key(self.schema_db, name).describe()
+        self._schema_from_key(name).describe()
 
     def explain_query(self, items):
         table = items[1].children[0].value

@@ -19,4 +19,6 @@ insert into school (name, created_at) values(
   1980-01-01
 );
 select * from school;
+drop table school;
+show tables;
 "

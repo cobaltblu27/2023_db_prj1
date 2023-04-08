@@ -67,6 +67,12 @@ class Schema:
         value_dict = json.loads(value_raw.decode(ENCODING))
         return value_dict
 
+    def delete(self, db: berkeleydb.db.DB, p_key_values):
+        row_refs = self.get_row_refs(db)
+        row_refs = list(filter(lambda ref: ref != p_key_values, row_refs))
+        db.delete(s2b(self.name, *p_key_values))
+        db.put(s2b(self.name, "pkeys"), s2b(json.dumps(row_refs)))
+
     def describe(self):
         table = [
             ["table_name", self.name, '', ''],

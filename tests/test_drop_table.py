@@ -43,3 +43,14 @@ def test_drop_referenced_tbl():
     """)
     with pytest.raises(DropReferencedTableError):
         run("drop table school;")
+
+
+def test_drop_erases_rows(capfd):
+    run(create_school)
+    run("""insert into school values("Abydos", 2019-01-01);""")
+    run("drop table school;")
+    run(create_school)
+    run("select * from school;")
+    out, err = capfd.readouterr()
+    assert "Abydos" not in out
+

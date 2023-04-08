@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Union
 
 import berkeleydb
 from lark import Tree
@@ -58,7 +58,7 @@ def tree_to_column_list(tree) -> List[str]:
     return [col.children[0].value for col in tree.find_data("column_name")]
 
 
-def print_table(table: List[List[str]]):
+def print_table(table: List[List[Union[str, int]]]):
     height = len(table[0])
     column_widths = [max(len(str(row[i])) for row in table) for i in range(height)]
     _print_separator(column_widths)
@@ -72,6 +72,9 @@ def print_table(table: List[List[str]]):
 
 
 def print_desc(table: List[List[str]]):
+    if len(table) == 0:
+        print("---\n---")
+        return
     height = len(table[0])
     column_widths = [max(len(str(row[i])) for row in table) for i in range(height)]
     total_width = sum(column_widths) + len(column_widths)
@@ -82,12 +85,3 @@ def print_desc(table: List[List[str]]):
         print('')
     print("-" * total_width)
 
-
-if __name__ == "__main__":
-    data = [
-        ["ACCOUNT_NUMBER", "BRANCH_NAME", "BALANCE"],
-        ["A-101", "Downtown", "500"],
-        ["A-102", "Perryridge", "400"],
-        ["A-201", "Brighton", "900"],
-    ]
-    print_table(data)
