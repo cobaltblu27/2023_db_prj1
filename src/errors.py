@@ -1,62 +1,66 @@
-class SyntaxError(Exception):
+class SqlException(Exception):
+    message: str = "SQL Error!"
+
+
+class SyntaxError(SqlException):
+    message = "Syntax Error"
+
+
+class CreateTableSuccess(SqlException):
     pass
 
 
-class CreateTableSuccess(Exception):
+class DuplicateColumnDefError(SqlException):
     pass
 
 
-class DuplicateColumnDefError(Exception):
+class DuplicatePrimaryKeyDefError(SqlException):
     pass
 
 
-class DuplicatePrimaryKeyDefError(Exception):
+class ReferenceTypeError(SqlException):
     pass
 
 
-class ReferenceTypeError(Exception):
+class ReferenceNonPrimaryKeyError(SqlException):
     pass
 
 
-class ReferenceNonPrimaryKeyError(Exception):
+class ReferenceColumnExistenceError(SqlException):
     pass
 
 
-class ReferenceColumnExistenceError(Exception):
+class ReferenceTableExistenceError(SqlException):
     pass
 
 
-class ReferenceTableExistenceError(Exception):
+class NonExistingColumnDefError(SqlException):
     pass
 
 
-class NonExistingColumnDefError(Exception):
+class TableExistenceError(SqlException):
     pass
 
 
-class TableExistenceError(Exception):
+class CharLengthError(SqlException):
     pass
 
 
-class CharLengthError(Exception):
+class DropSuccess(SqlException):
     pass
 
 
-class DropSuccess(Exception):
+class NoSuchTable(SqlException):
+    message = "No such table"
+
+
+class DropReferencedTableError(SqlException):
     pass
 
 
-class NoSuchTable(Exception):
+class InsertResult(SqlException):
     pass
 
 
-class DropReferencedTableError(Exception):
-    pass
-
-
-class InsertResult(Exception):
-    pass
-
-
-class SelectTableExistenceError(Exception):
+class SelectTableExistenceError(SqlException):
     pass

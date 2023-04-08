@@ -6,6 +6,7 @@ from lark import Lark, Transformer, ParseTree, exceptions
 
 from src.Schema import Schema
 from src.SqlTransformer import SqlTransformer
+from src.errors import * 
 
 PROMPT = "DB_2016-19965>"
 
@@ -21,6 +22,8 @@ arg_parser.add_argument("-t", "--test", type=str, help="test string")
 def get_prompt_input() -> Generator[str, None, None]:
     while True:
         str_input: str = input(PROMPT + " ")
+        if len(str_input) == 0:
+            continue
         while str_input[-1] != ';':
             next_line: str = input()
             str_input += " " + next_line
@@ -40,13 +43,17 @@ def prompt(parser: Lark, transformer: Transformer):
         try:
             query_str = next(input_generator)
             tree: ParseTree = parser.parse(query_str)
-            transformer.transform(tree)
+            try: 
+                transformer.transform(tree)
+            except exceptions.VisitError as e:
+                raise e.orig_exc
         except exceptions.UnexpectedToken:
             print("{} Syntax Error".format(PROMPT))
             input_generator = get_prompt_input()  # 에러가 날 경우 저장된 다음 명령어들을 버린다.
         except KeyboardInterrupt:
             sys.exit(-1)
-
+        except SqlException as e:
+            print("{} {}".format(PROMPT, e.message))
 
 if __name__ == "__main__":
     with open('grammar.lark') as file:
