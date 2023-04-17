@@ -1,62 +1,35 @@
-import os
 import sys
 from typing import List, Union, cast
 
-from berkeleydb import db
 from lark import Transformer
 
-from src.Schema import Schema, ColumnDict, ColumnSpec, KeySpec, ForeignKey
+from src.DataBase import SchemaDB, RowsDB
+from src.Schema import Schema
+from src.Types import ForeignKey, ColumnSpec, ColumnDict, KeySpec
 from src.errors import *
-from src.tools import db_keys, print_desc, s2b, tree_to_column_list, db_clear, print_table
-
-DB_DIR = "DB"
-SCHEMA_DB = 'schema.db'
-MAIN_DB = 'db.db'
+from src.tools import print_desc, tree_to_column_list, print_table
 
 
 # 명령어에 따라 어떤 명령어가 요청되었는지 출력하도록 한다.
 class SqlTransformer(Transformer):
     def __init__(self):
         super().__init__()
-        if not os.path.exists(DB_DIR):
-            os.makedirs(DB_DIR)
-
-        self._env = db.DBEnv()
-        self._env.open(os.path.join(os.getcwd(), DB_DIR),
-                       db.DB_CREATE | db.DB_INIT_MPOOL)
-
-        self.schema_db = db.DB(self._env)
-        self.schema_db.open(SCHEMA_DB, db.DB_BTREE, db.DB_CREATE)
-
-        self.db = db.DB(self._env)
-        self.db.open(MAIN_DB, db.DB_BTREE, db.DB_CREATE)
-
-    def __del__(self):
-        self._env.close()
-        self.db.close()
-        self.schema_db.close()
-        pass
+        self.schema_db = SchemaDB()
+        self.row_db = RowsDB()
 
     def TEST_reset_db(self):
-        db_clear(self.db)
-        db_clear(self.schema_db)
+        self.row_db.reset()
+        self.schema_db.reset()
 
     def _print_log(self, query: str):
         print("'{}' requested".format(query))
-
-    def _get_table_names(self) -> List[str]:
-        keys = filter(
-            lambda k: "columns" in k,
-            db_keys(self.schema_db)
-        )
-        return [key.split("$$")[0] for key in keys]
 
     def _schema_from_key(self, name: str):
         return Schema.schema_from_key(self.schema_db, name)
 
     def create_table_query(self, items):
         table_name = items[2].children[0].lower()
-        if table_name in self._get_table_names():
+        if table_name in self.schema_db.get_table_names():
             raise TableExistenceError
         column_definition_iter = list(items[3].find_data("column_definition"))
         column_dict: ColumnDict = {}
@@ -103,7 +76,7 @@ class SqlTransformer(Transformer):
                     "table": ref_table,
                     "ref_columns": ref_columns
                 }
-                if ref_table not in self._get_table_names():
+                if ref_table not in self.schema_db.get_table_names():
                     raise ReferenceTableExistenceError
                 ref_schema = self._schema_from_key(ref_table)
 
@@ -129,12 +102,12 @@ class SqlTransformer(Transformer):
 
     def select_query(self, items):
         table_name = list(items[2].find_data("table_name"))[0].children[0]
-        if table_name not in self._get_table_names():
+        if table_name not in self.schema_db.get_table_names():
             raise SelectTableExistenceError(table_name)
 
         target_schema = Schema.schema_from_key(self.schema_db, table_name)
-        refs = target_schema.get_row_refs(self.db)
-        result = [target_schema.select(self.db, ref) for ref in refs]
+        refs = self.schema_db.get_refs(target_schema.name)
+        result = [target_schema.select(self.row_db, ref) for ref in refs]
 
         columns_names = list(target_schema.columns.keys())
         result_table = [cast(List[Union[int, str]], columns_names)]
@@ -145,7 +118,7 @@ class SqlTransformer(Transformer):
     def insert_query(self, items):
         columns_specs_token = items[3]
         table_name = list(items[2].find_data("table_name"))[0].children[0]
-        if table_name not in self._get_table_names():
+        if table_name not in self.schema_db.get_table_names():
             raise NoSuchTable
         target_schema = self._schema_from_key(table_name)
         column_specs: List[str] = list(target_schema.columns.keys())
@@ -157,11 +130,11 @@ class SqlTransformer(Transformer):
             column_dict[column] = column_values[i]
 
         # TODO: add validation. As of prj1-2, no validation is needed
-        target_schema.insert(self.db, column_dict)
+        target_schema.insert(self.schema_db, self.row_db, column_dict)
 
     def drop_query(self, items):
         table_to_drop = items[2].children[0].lower()
-        table_names = self._get_table_names()
+        table_names = self.schema_db.get_table_names()
 
         if table_to_drop not in table_names:
             raise NoSuchTable
@@ -174,17 +147,11 @@ class SqlTransformer(Transformer):
                     raise DropReferencedTableError(table_to_drop)
 
         target_schema = self._schema_from_key(table_to_drop)
-        row_refs = target_schema.get_row_refs(self.db)
+        row_refs = self.schema_db.get_refs(target_schema.name)
         for row in row_refs:
-            target_schema.delete(self.db, row)
+            target_schema.delete(self.schema_db, self.row_db, row)
 
-        keys_to_delete = filter(
-            lambda k: table_to_drop in k,
-            db_keys(self.schema_db)
-        )
-        for k in keys_to_delete:
-            self.schema_db.delete(s2b(k))
-
+        self.schema_db.drop(table_to_drop)
         self._print_log("DROP TABLE")
 
     def _describe_db(self, name: str):
@@ -203,7 +170,8 @@ class SqlTransformer(Transformer):
         self._describe_db(table)
 
     def show_query(self, items):
-        print_desc([[table] for table in self._get_table_names()])
+        names = self.schema_db.get_table_names()
+        print_desc([[table] for table in names])
 
     def delete_query(self, items):
         self._print_log("DELETE")

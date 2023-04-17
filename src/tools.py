@@ -1,9 +1,16 @@
+import json
 from typing import List, Union
 
-import berkeleydb
-from lark import Tree
-
 ENCODING = "utf-8"
+
+
+def row_key(obj) -> bytes:
+    json_str = json.dumps(obj)
+    return s2b(json_str)
+
+
+def schema_key(*strings) -> bytes:
+    return s2b(*strings)
 
 
 def s2b(*strings) -> bytes:
@@ -27,15 +34,6 @@ def _print_separator(column_widths: List[int]):
     for width in column_widths:
         print('+' + '-' * (width + 2), end='')
     print('+')
-
-
-def db_clear(db: berkeleydb.db.DB):
-    cursor = db.cursor()
-    record = cursor.first()
-    while record:
-        key, value = record
-        db.delete(key)
-        record = cursor.next()
 
 
 # tree_to_column_list input example:
@@ -84,4 +82,3 @@ def print_desc(table: List[List[str]]):
             print(f"{cell: <{column_widths[i]}}", end=' ')
         print('')
     print("-" * total_width)
-

@@ -55,6 +55,7 @@ def prompt(parser: Lark, transformer: Transformer):
         except SqlException as e:
             print("{} {}".format(PROMPT, e.message))
 
+
 if __name__ == "__main__":
     with open('grammar.lark') as file:
         sql_parser = Lark(file.read(), start="command", lexer="basic")
