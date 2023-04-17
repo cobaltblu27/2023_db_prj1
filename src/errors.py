@@ -6,48 +6,43 @@ class SyntaxError(SqlException):
     message = "Syntax Error"
 
 
-class CreateTableSuccess(SqlException):
-    pass
-
-
 class DuplicateColumnDefError(SqlException):
-    pass
+    message = "Create table has failed: column definition is duplicated"
 
 
 class DuplicatePrimaryKeyDefError(SqlException):
-    pass
+    message = "Create table has failed: primary key definition is duplicated"
 
 
 class ReferenceTypeError(SqlException):
-    pass
+    message = "Create table has failed: foreign key references wrong type"
 
 
-class ReferenceNonPrimaryKeyError(SqlException):
-    pass
+class ReferenceNonPrimaryKeyError(SqlException): 
+    message = "Create table has failed: foreign key references non primary key column"
 
 
 class ReferenceColumnExistenceError(SqlException):
+    message = "Create table has failed: foreign key referneces non existing column"
     pass
 
 
 class ReferenceTableExistenceError(SqlException):
-    pass
+    message = "Create table has failed: foreign key referneces non existing table"
 
 
 class NonExistingColumnDefError(SqlException):
-    pass
+    def __init__(self, col_name: str) -> None:
+        super().__init__()
+        self.message = "Create table has failed: '{}' does not exist in column definition".format(col_name)
 
 
 class TableExistenceError(SqlException):
-    pass
+    message = "Create table has failed: table with same name already exists"
 
 
 class CharLengthError(SqlException):
-    pass
-
-
-class DropSuccess(SqlException):
-    pass
+    message = "Char length should be over 0"
 
 
 class NoSuchTable(SqlException):
@@ -55,12 +50,13 @@ class NoSuchTable(SqlException):
 
 
 class DropReferencedTableError(SqlException):
-    pass
-
-
-class InsertResult(SqlException):
-    pass
+    def __init__(self, table_name: str) -> None:
+        super().__init__()
+        self.message = "Drop table has failed: '{}' is referenced by other table".format(table_name)
 
 
 class SelectTableExistenceError(SqlException):
-    pass
+    def __init__(self, table_name: str) -> None:
+        super().__init__()
+        self.message = "Selection has failed: '{}' does not exist".format(table_name)
+

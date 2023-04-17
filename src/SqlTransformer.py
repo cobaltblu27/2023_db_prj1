@@ -92,7 +92,7 @@ class SqlTransformer(Transformer):
                 key_spec['primary_key'] = col_list
                 for p_key_col in col_list:
                     if p_key_col not in column_dict:
-                        raise NonExistingColumnDefError
+                        raise NonExistingColumnDefError(p_key_col)
                     column_dict[p_key_col]['non_null'] = True
             elif f_key:
                 col_list = tree_to_column_list(f_key[0].children[2])
@@ -115,7 +115,7 @@ class SqlTransformer(Transformer):
                     raise ReferenceTypeError
                 for i in range(len(col_list)):
                     if col_list[i] not in column_dict:
-                        raise NonExistingColumnDefError
+                        raise NonExistingColumnDefError(col_list[i])
                     col_spec = column_dict[col_list[i]]
                     ref_col_spec = ref_schema.columns[ref_columns[i]]
                     if col_spec['type'] != ref_col_spec['type'] or \
@@ -130,7 +130,7 @@ class SqlTransformer(Transformer):
     def select_query(self, items):
         table_name = list(items[2].find_data("table_name"))[0].children[0]
         if table_name not in self._get_table_names():
-            raise SelectTableExistenceError
+            raise SelectTableExistenceError(table_name)
 
         target_schema = Schema.schema_from_key(self.schema_db, table_name)
         refs = target_schema.get_row_refs(self.db)
@@ -171,7 +171,7 @@ class SqlTransformer(Transformer):
             table_schema = self._schema_from_key(table_name)
             for f_key in table_schema.key_spec['foreign_key']:
                 if f_key["table"] == table_to_drop:
-                    raise DropReferencedTableError
+                    raise DropReferencedTableError(table_to_drop)
 
         target_schema = self._schema_from_key(table_to_drop)
         row_refs = target_schema.get_row_refs(self.db)
