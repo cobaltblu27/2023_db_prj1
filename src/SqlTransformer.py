@@ -7,7 +7,7 @@ from src.DataBase import SchemaDB, RowsDB
 from src.Schema import Schema
 from src.Types import ForeignKey, ColumnSpec, ColumnDict, KeySpec
 from src.errors import *
-from src.tools import print_desc, tree_to_column_list, print_table
+from src.tools import PROMPT, print_desc, tree_to_column_list, print_table
 
 
 # 명령어에 따라 어떤 명령어가 요청되었는지 출력하도록 한다.
@@ -37,7 +37,7 @@ class SqlTransformer(Transformer):
             col_name = list(col.find_data("column_name"))[0].children[0].value
             attr_type = list(col.find_data("data_type"))[0].children[0].value
             not_null = str(col.children[2]).upper() == "NOT" and \
-                       str(col.children[3]).upper() == "NULL"
+                str(col.children[3]).upper() == "NULL"
             length = None if attr_type.lower() != "char" else \
                 int(list(col.find_data("data_type"))[0].children[2].value)
             if length is not None and length < 1:
@@ -123,14 +123,18 @@ class SqlTransformer(Transformer):
         target_schema = self._schema_from_key(table_name)
         column_specs: List[str] = list(target_schema.columns.keys())
         if columns_specs_token is not None:
-            column_specs = [col.children[0].value for col in items[3].find_data("column_name")]
-        column_values = [col.children[0].value for col in items[5].find_data("comparable_value")]
+            column_specs = [
+                col.children[0].value for col in items[3].find_data("column_name")]
+        column_values = [
+            col.children[0].value for col in items[5].find_data("comparable_value")]
         column_dict = {}
         for i, column in enumerate(column_specs):
             column_dict[column] = column_values[i]
 
         # TODO: add validation. As of prj1-2, no validation is needed
         target_schema.insert(self.schema_db, self.row_db, column_dict)
+
+        print("{} The row is inserted".format(PROMPT))
 
     def drop_query(self, items):
         table_to_drop = items[2].children[0].lower()
@@ -152,9 +156,12 @@ class SqlTransformer(Transformer):
             target_schema.delete(self.schema_db, self.row_db, row)
 
         self.schema_db.drop(table_to_drop)
-        self._print_log("DROP TABLE")
+        print("{} '{}' table is dropped".format(PROMPT, table_name))
 
     def _describe_db(self, name: str):
+        table_names = self.schema_db.get_table_names()
+        if name not in table_names:
+            raise NoSuchTable
         self._schema_from_key(name).describe()
 
     def explain_query(self, items):

@@ -6,9 +6,8 @@ from lark import Lark, Transformer, ParseTree, exceptions
 
 from src.Schema import Schema
 from src.SqlTransformer import SqlTransformer
-from src.errors import * 
-
-PROMPT = "DB_2016-19965>"
+from src.errors import *
+from src.tools import PROMPT
 
 # (테스트용) argument로 query를 받을 수 있게 하였다.
 arg_parser = argparse.ArgumentParser()
@@ -43,7 +42,7 @@ def prompt(parser: Lark, transformer: Transformer):
         try:
             query_str = next(input_generator)
             tree: ParseTree = parser.parse(query_str)
-            try: 
+            try:
                 transformer.transform(tree)
             except exceptions.VisitError as e:
                 raise e.orig_exc

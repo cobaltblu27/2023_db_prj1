@@ -16,7 +16,7 @@ create table school (
   primary key (name)
 );
 create table student (
-  id int not null, name char(32) not null,
+  id int, name char(32),
   school_name char(16) not null,
   created_at date,
   primary key (id, name),
@@ -27,6 +27,19 @@ create table student (
 
 def test_create_table():
     run(create_school)
+
+
+def test_foreign_key_composite():
+    run(create_school)
+    create_grade = """
+    create table grade (
+      name char(32),
+      id int,
+      primary key (name),
+      foreign key (id, name) references student(id, name)
+    ); 
+    """
+    run(create_grade)
 
 
 def test_duplicate_cols():

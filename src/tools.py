@@ -2,6 +2,7 @@ import json
 from typing import List, Union
 
 ENCODING = "utf-8"
+PROMPT = "DB_2016-19965>"
 
 
 def row_key(obj) -> bytes:
@@ -58,7 +59,8 @@ def tree_to_column_list(tree) -> List[str]:
 
 def print_table(table: List[List[Union[str, int]]]):
     height = len(table[0])
-    column_widths = [max(len(str(row[i])) for row in table) for i in range(height)]
+    column_widths = [max(len(str(row[i])) for row in table)
+                     for i in range(height)]
     _print_separator(column_widths)
     for i, row in enumerate(table):
         for j, cell in enumerate(row):
@@ -74,7 +76,8 @@ def print_desc(table: List[List[str]]):
         print("---\n---")
         return
     height = len(table[0])
-    column_widths = [max(len(str(row[i])) for row in table) for i in range(height)]
+    column_widths = [max(len(str(row[i])) for row in table)
+                     for i in range(height)]
     total_width = sum(column_widths) + len(column_widths)
     print("-" * total_width)
     for row in table:

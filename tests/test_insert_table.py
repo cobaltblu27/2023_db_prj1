@@ -39,8 +39,21 @@ def test_insert_table(capfd):
     );
     """
     run(insert_sql)
+    out, _ = capfd.readouterr()
+    assert "The row is inserted" in out
+
     run("select * from school;")
     out, _ = capfd.readouterr()
     assert "Abydos" in out
     assert "Trinity" in out
 
+
+def test_insert_no_table(capfd):
+    run(create_school)
+    insert_sql = """
+    insert into club (name) values(
+        "game dev"
+    );
+    """
+    with pytest.raises(NoSuchTable):
+        run(insert_sql)

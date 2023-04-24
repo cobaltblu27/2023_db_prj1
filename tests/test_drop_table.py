@@ -21,6 +21,7 @@ create table school (
 def test_drop_table(capfd):
     run(create_school)
     run("drop table school;")
+    capfd.readouterr()
     run("show tables;")
     out, err = capfd.readouterr()
     assert "school" not in out
@@ -50,6 +51,7 @@ def test_drop_erases_rows(capfd):
     run("""insert into school values("Abydos", 2019-01-01);""")
     run("drop table school;")
     run(create_school)
+    capfd.readouterr()
     run("select * from school;")
     out, err = capfd.readouterr()
     assert "Abydos" not in out

@@ -34,7 +34,7 @@ class ReferenceTableExistenceError(SqlException):
 class NonExistingColumnDefError(SqlException):
     def __init__(self, col_name: str) -> None:
         super().__init__()
-        self.message = "Create table has failed: '{}' does not exist in column definition".format(col_name)
+        self.message = "Create table has failed: '[{}]' does not exist in column definition".format(col_name)
 
 
 class TableExistenceError(SqlException):
