@@ -25,6 +25,37 @@ create table student (
 """
 
 
+create_prereq = """
+create table students (
+ id char (10) not null,
+ name char (20),
+ primary key (id)
+);
+create table lectures (
+ id int not null,
+ name char (20),
+ capacity int,
+ primary key (id)
+);
+create table ref (
+ id int,
+ foreign key (id) references lectures (id)
+);
+create table apply (
+ s_id char (10) not null,
+ l_id int not null,
+ apply_date date,
+ primary key (s_id, l_id),
+ foreign key (s_id) references students (id),
+ foreign key (l_id) references lectures (id)
+);
+"""
+
+
+def test_prereq():
+    run(create_prereq)
+
+
 # 1-2에선 유효한 입력만 가정
 def test_insert_table(capfd):
     run(create_school)

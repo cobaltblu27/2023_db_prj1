@@ -18,7 +18,7 @@ class ReferenceTypeError(SqlException):
     message = "Create table has failed: foreign key references wrong type"
 
 
-class ReferenceNonPrimaryKeyError(SqlException): 
+class ReferenceNonPrimaryKeyError(SqlException):
     message = "Create table has failed: foreign key references non primary key column"
 
 
@@ -59,4 +59,66 @@ class SelectTableExistenceError(SqlException):
     def __init__(self, table_name: str) -> None:
         super().__init__()
         self.message = "Selection has failed: '{}' does not exist".format(table_name)
+
+
+class InsertResult(SqlException):
+    message = "The row is inserted"
+
+
+class InsertTypeMismatchError(SqlException):
+    message = "Insertion has failed: Types are not matched"
+
+
+class InsertColumnExistenceError(SqlException):
+    def __init__(self, col_name: str):
+        super().__init__()
+        self.message = "Insertion has failed: '{}' does not exist".format(col_name)
+
+
+class InsertColumnNonNullableError(SqlException):
+    def __init__(self, col_name: str):
+        super().__init__()
+        self.message = "Insertion has failed: '{}' is not nullable".format(col_name)
+
+
+class DeleteResult(SqlException):
+    def __init__(self, count: int):
+        super().__init__()
+        self.message = "‘{}’ row(s) are deleted".format(count)
+
+
+class SelectColumnResolveError(SqlException):
+    def __init__(self, col_name: str):
+        super().__init__()
+        self.message = "Selection has failed: fail to resolve '{}'".format(col_name)
+
+
+class WhereIncomparableError(SqlException):
+    message = "Where clause trying to compare incomparable values"
+
+
+class WhereTableNotSpecified(SqlException):
+    message = "Where clause trying to reference tables which are not specified"
+
+
+class WhereColumnNotExist(SqlException):
+    message = "Where clause trying to reference non existing column"
+
+
+class WhereAmbiguousReference(SqlException):
+    message = "Where clause contains ambiguous reference"
+
+
+class InsertDuplicatePrimaryKeyError(SqlException):
+    message = "Insertion has failed: Primary key duplication"
+
+
+class InsertReferentialIntegrityError(SqlException):
+    message = "Insertion has failed: Referential integrity violation"
+
+
+class DeleteReferentialIntegrityPassed(SqlException):
+    def __init__(self, count: int):
+        super().__init__()
+        self.message = "‘{}’ row(s) are not deleted due to referential integrity".format(count)
 
