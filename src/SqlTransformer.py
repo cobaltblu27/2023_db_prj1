@@ -12,6 +12,7 @@ from src.tools import PROMPT, print_desc, tree_to_column_list, print_table
 
 # 명령어에 따라 어떤 명령어가 요청되었는지 출력하도록 한다.
 class SqlTransformer(Transformer):
+    # row_db에는 row의 실제 값들이, schema_db에는 메타데이터, row reference list 등 다른 모든 정보가 저장된다.
     def __init__(self):
         super().__init__()
         self.schema_db = SchemaDB()
@@ -27,6 +28,9 @@ class SqlTransformer(Transformer):
     def _schema_from_key(self, name: str):
         return Schema.schema_from_key(self.schema_db, name)
 
+    # column/key specification은 Schema 클래스로 만들어진다.
+    # 생성된 schema 인스턴스는 commit 메서드 호출 시 self.schema_db
+    # 에 저장된다.
     def create_table_query(self, items):
         table_name = items[2].children[0].lower()
         if table_name in self.schema_db.get_table_names():
@@ -37,7 +41,7 @@ class SqlTransformer(Transformer):
             col_name = list(col.find_data("column_name"))[0].children[0].value
             attr_type = list(col.find_data("data_type"))[0].children[0].value
             not_null = str(col.children[2]).upper() == "NOT" and \
-                str(col.children[3]).upper() == "NULL"
+                       str(col.children[3]).upper() == "NULL"
             length = None if attr_type.lower() != "char" else \
                 int(list(col.find_data("data_type"))[0].children[2].value)
             if length is not None and length < 1:
@@ -115,6 +119,8 @@ class SqlTransformer(Transformer):
             result_table.append([row[column] for column in columns_names])
         print_table(result_table)
 
+    # Row 정보는 self.row_db에 저장된다. key값은 primary key들의 json이며, 전체 row의
+    # primary key값들의 목록은 self.schema_db에 저장된다.
     def insert_query(self, items):
         columns_specs_token = items[3]
         table_name = list(items[2].find_data("table_name"))[0].children[0]

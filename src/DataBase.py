@@ -15,6 +15,7 @@ _env: db.DBEnv = None
 _db_cnt = 0
 
 
+# berkeleyDB와 상호작용하는 backend. global하게 instance의 수를 추적하여 environment와 파일을 관리한다.
 class DataBase:
     def __init__(self):
         super().__init__()
@@ -47,6 +48,7 @@ class DataBase:
         self.db.close()
 
 
+# DataBase를 상속받은 클래스는 용도에 맞게 입력값을 받게 하는 메서드를 지닌다.
 class SchemaDB(DataBase):
     def __init__(self):
         super().__init__()

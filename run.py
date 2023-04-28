@@ -52,6 +52,7 @@ def prompt(parser: Lark, transformer: Transformer):
         except KeyboardInterrupt:
             sys.exit(-1)
         except SqlException as e:
+            # SqlException에 해당하는 에러 발생 시 메세지 출력 후 다시 루프를 돈다.
             print("{} {}".format(PROMPT, e.message))
 
 

@@ -1,6 +1,8 @@
 import json
 from typing import List, Union
 
+# cyclic dependency를 방지하기 위해 전체적으로 사용되는 변수, helper function은 여기 선언한다.
+
 ENCODING = "utf-8"
 PROMPT = "DB_2016-19965>"
 
@@ -14,6 +16,7 @@ def schema_key(*strings) -> bytes:
     return s2b(*strings)
 
 
+# string 여러개를 받아 key값용 bytes로 변환; string2bytes
 def s2b(*strings) -> bytes:
     key = "$$".join(strings)
     return key.encode(ENCODING)
@@ -29,12 +32,6 @@ def db_keys(db):
         record = cursor.next()
     cursor.close()
     return key_list
-
-
-def _print_separator(column_widths: List[int]):
-    for width in column_widths:
-        print('+' + '-' * (width + 2), end='')
-    print('+')
 
 
 # tree_to_column_list input example:
@@ -55,6 +52,12 @@ def _print_separator(column_widths: List[int]):
 # )
 def tree_to_column_list(tree) -> List[str]:
     return [col.children[0].value for col in tree.find_data("column_name")]
+
+
+def _print_separator(column_widths: List[int]):
+    for width in column_widths:
+        print('+' + '-' * (width + 2), end='')
+    print('+')
 
 
 def print_table(table: List[List[Union[str, int]]]):

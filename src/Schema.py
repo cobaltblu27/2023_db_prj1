@@ -6,6 +6,11 @@ from src.Types import ColumnDict, KeySpec, ColumnValue
 from src.tools import print_desc
 
 
+# Schema 클래스는 한 table을 나타내는 역할을 한다. 각 테이블 관련해서 DataBase와
+# 상호작용하는 부분은 이 layer을 거치도록 하였다. SqlTransformer에선 이
+# 클래스의 메서드를 호출함으로서 파싱된 쿼리를 실제로 실행한다.
+# Schema는 create table에서 직접 새 __init__을 거쳐 새 Schema를 만드는 방법,
+# 그리고 아래의 static method 를 활용하여 기존의 table로부터 만드는 방법이 있다.
 class Schema:
     def __init__(self, name: str, columns: ColumnDict, key_spec: KeySpec):
         self.name: str = name
