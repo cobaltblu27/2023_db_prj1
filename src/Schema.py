@@ -3,6 +3,7 @@ from typing import List
 
 from src.DataBase import SchemaDB, RowsDB
 from src.Types import ColumnDict, KeySpec, ColumnValue
+from src.errors import InsertColumnExistenceError
 from src.tools import print_desc
 
 
@@ -24,11 +25,27 @@ class Schema:
         schema_db.put_column(self.name, self.columns)
         schema_db.put_key_spec(self.name, self.key_spec)
 
-    def insert(self, schema_db: SchemaDB, db: RowsDB, column: ColumnValue):
+    def validate_type(self, attr_name: str, val_type: str):
+        column = self.columns[attr_name]
+        if column is None:
+            return False
+        spec_type = "STR" if column["type"] == "char" else column["type"].upper()
+        return spec_type == val_type.upper()
+
+    def insert(self, schema_db: SchemaDB, db: RowsDB, columns: ColumnValue):
         p_key_list = self.get_pkey_col_list()
         row_refs = schema_db.get_refs(self.name)
-        ref_dict = {k: v for k, v in column.items() if k in p_key_list}
-        db.put_row(self.name, ref_dict, column)
+        for name, val in columns.items():
+            if self.columns[name]["type"] == "char":
+                colons = ["'", '"']
+                col_str = columns[name]
+                if col_str[0] in colons and col_str[-1] in colons:
+                    col_str = col_str[1:-1]
+                if self.columns[name]["length"] is not None:
+                    col_str = col_str[0:self.columns[name]["length"]]
+                columns[name] = col_str
+        ref_dict = {k: v for k, v in columns.items() if k in p_key_list}
+        db.put_row(self.name, ref_dict, columns)
         schema_db.put_refs(self.name, row_refs + [ref_dict])
 
     def select(self, db: RowsDB, ref: object) -> ColumnValue:

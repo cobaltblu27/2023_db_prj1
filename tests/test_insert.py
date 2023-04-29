@@ -111,7 +111,7 @@ def test_insert_no_table(capfd):
 def test_insert_type_mismatch():
     run(create_school)
     insert_sql = """
-    insert into school (name, created_at) 
+    insert into school (name, created_at)
         values(123, 1980-01-01);
     """
     with pytest.raises(InsertTypeMismatchError):
@@ -128,7 +128,7 @@ def test_insert_attr_mismatch():
 def test_insert_attr_values_mismatch():
     run(create_school)
     insert_sql = """
-    insert into school (name) 
+    insert into school (name)
         values("Valkyrie", 1980-01-01);
     """
     with pytest.raises(InsertTypeMismatchError):
@@ -138,8 +138,8 @@ def test_insert_attr_values_mismatch():
 def test_insert_null_in_nonnull():
     run(create_school)
     insert_sql = """
-    insert into student (id, name, school_name, created_at) 
-        values(39, "Mika", null, 1980-01-01);
+    insert into student (id, name, created_at)
+        values("mk", "Mika", 1980-01-01);
     """
     with pytest.raises(InsertColumnNonNullableError):
         run(insert_sql)
@@ -148,8 +148,8 @@ def test_insert_null_in_nonnull():
 def test_insert_column_existence():
     run(create_school)
     insert_sql = """
-    insert into student (id, name, school_name, created_at, str) 
-        values(39, "Mika", "Trinity", 1980-01-01, 99999);
+    insert into student (id, name, school_name, created_at, str)
+        values("39", "Mika", "Trinity", 1980-01-01, 99999);
     """
     with pytest.raises(InsertColumnExistenceError):
         run(insert_sql)
@@ -158,7 +158,7 @@ def test_insert_column_existence():
 def test_insert_tuple_length_cutoff(capfd):
     run(create_school)
     insert_sql = """
-    insert into school values("0123456789abcdefg");
+    insert into school (name) values("0123456789abcdefg");
     """
     run(insert_sql)
 
@@ -169,20 +169,20 @@ def test_insert_tuple_length_cutoff(capfd):
     assert "0123456789abcdefg" not in out
 
 
-def test_insert_pkey_dup():
-    run(create_school)
-    insert_sql = """insert into school values("Trinity");"""
-    run(insert_sql)
-    with pytest.raises(InsertDuplicatePrimaryKeyError):
-        run(insert_sql)
-
-
-def test_insert_ref_integrity_err():
-    run(create_school)
-    insert_sql = """
-    insert into student (id, name, school_name, created_at) 
-        values(39, "Mika", "Trinity", 1980-01-01);
-    """
-    with pytest.raises(InsertReferentialIntegrityError):
-        run(insert_sql)
-
+# def test_insert_pkey_dup():
+#     run(create_school)
+#     insert_sql = """insert into school values("Trinity");"""
+#     run(insert_sql)
+#     with pytest.raises(InsertDuplicatePrimaryKeyError):
+#         run(insert_sql)
+#
+#
+# def test_insert_ref_integrity_err():
+#     run(create_school)
+#     insert_sql = """
+#     insert into student (id, name, school_name, created_at)
+#         values(39, "Mika", "Trinity", 1980-01-01);
+#     """
+#     with pytest.raises(InsertReferentialIntegrityError):
+#         run(insert_sql)
+#

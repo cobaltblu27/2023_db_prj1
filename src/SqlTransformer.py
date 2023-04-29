@@ -7,7 +7,7 @@ from src.DataBase import SchemaDB, RowsDB
 from src.Schema import Schema
 from src.Types import ForeignKey, ColumnSpec, ColumnDict, KeySpec
 from src.errors import *
-from src.tools import PROMPT, print_desc, tree_to_column_list, print_table
+from src.tools import PROMPT, print_desc, tree_to_column_list, print_table, search_item
 
 
 # 명령어에 따라 어떤 명령어가 요청되었는지 출력하도록 한다.
@@ -105,25 +105,33 @@ class SqlTransformer(Transformer):
         schema.commit_schema(self.schema_db)
 
     def select_query(self, items):
-        table_name = list(items[2].find_data("table_name"))[0].children[0]
+        table_name = search_item(items, "table_name")
         if table_name not in self.schema_db.get_table_names():
             raise SelectTableExistenceError(table_name)
-
         target_schema = Schema.schema_from_key(self.schema_db, table_name)
+
+        column_names = []
+        for subtree in items[1].iter_subtrees():
+            if subtree.data == "column_name":
+                column_names.append(subtree.children[0].value)
+        if len(column_names) < 1:
+            column_names = list(target_schema.columns.keys())
+
         refs = self.schema_db.get_refs(target_schema.name)
         result = [target_schema.select(self.row_db, ref) for ref in refs]
 
-        columns_names = list(target_schema.columns.keys())
-        result_table = [cast(List[Union[int, str]], columns_names)]
+        result_table = [cast(List[Union[int, str]], column_names)]
         for row in result:
-            result_table.append([row[column] for column in columns_names])
+            result_table.append(["null" if column not in row else row[column] for column in column_names])
         print_table(result_table)
 
     # Row 정보는 self.row_db에 저장된다. key값은 primary key들의 json이며, 전체 row의
     # primary key값들의 목록은 self.schema_db에 저장된다.
     def insert_query(self, items):
+        print(items)
         columns_specs_token = items[3]
-        table_name = list(items[2].find_data("table_name"))[0].children[0]
+        # table_name = list(items[2].find_data("table_name"))[0].children[0]
+        table_name = search_item(items, "table_name")
         if table_name not in self.schema_db.get_table_names():
             raise NoSuchTable
         target_schema = self._schema_from_key(table_name)
@@ -131,11 +139,24 @@ class SqlTransformer(Transformer):
         if columns_specs_token is not None:
             column_specs = [
                 col.children[0].value for col in items[3].find_data("column_name")]
-        column_values = [
-            col.children[0].value for col in items[5].find_data("comparable_value")]
+            for column_spec in column_specs:
+                if column_spec not in target_schema.columns.keys():
+                    raise InsertColumnExistenceError(column_spec)
+
+        input_values_list = items[5].find_data("comparable_value")
+        column_token = [col.children[0] for col in input_values_list]  # {type, value}[]
         column_dict = {}
+
+        # validation
+        if len(column_specs) != len(column_token):
+            raise InsertTypeMismatchError
         for i, column in enumerate(column_specs):
-            column_dict[column] = column_values[i]
+            if not target_schema.validate_type(column, column_token[i].type):
+                raise InsertTypeMismatchError
+            column_dict[column] = column_token[i].value
+        for name, spec in target_schema.columns.items():
+            if spec["non_null"] and name not in column_dict:
+                raise InsertColumnNonNullableError(name)
 
         # TODO: add validation. As of prj1-2, no validation is needed
         target_schema.insert(self.schema_db, self.row_db, column_dict)
@@ -187,7 +208,8 @@ class SqlTransformer(Transformer):
         print_desc([[table] for table in names])
 
     def delete_query(self, items):
-        self._print_log("DELETE")
+
+        pass
 
     def update_query(self, items):
         self._print_log("UPDATE")
