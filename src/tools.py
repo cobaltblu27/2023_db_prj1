@@ -1,5 +1,6 @@
 import json
-from typing import List, Union
+from lark import Tree, Token
+from typing import List, Union, Literal
 
 # cyclic dependency를 방지하기 위해 전체적으로 사용되는 변수, helper function은 여기 선언한다.
 import lark
@@ -21,20 +22,6 @@ def schema_key(*strings) -> bytes:
 def s2b(*strings) -> bytes:
     key = "$$".join(strings)
     return key.encode(ENCODING)
-
-
-def search_item(items, data_name: str):
-    for item in items:
-        if isinstance(item, lark.Tree):
-            res = list(item.find_data(data_name))
-            if len(res) > 0:
-                children = res[0].children
-                return children[0] if len(children) > 0 else None
-    return None
-
-
-def search_items_list(items, data_name: str):
-    pass
 
 
 def db_keys(db):

@@ -1,16 +1,22 @@
 import sys
 from typing import List, Union, cast
 
-from lark import Transformer
+from lark import Transformer, Tree, Token
 
 from src.DataBase import SchemaDB, RowsDB
 from src.Schema import Schema
 from src.Types import ForeignKey, ColumnSpec, ColumnDict, KeySpec
 from src.errors import *
-from src.tools import PROMPT, print_desc, tree_to_column_list, print_table, search_item
+from src.parser_tool import where_predicate
+from src.tools import PROMPT, print_desc, tree_to_column_list, print_table
+from src.parser_tool import search_item_value, search_item
 
 
 # 명령어에 따라 어떤 명령어가 요청되었는지 출력하도록 한다.
+def _print_log(query: str):
+    print("'{}' requested".format(query))
+
+
 class SqlTransformer(Transformer):
     # row_db에는 row의 실제 값들이, schema_db에는 메타데이터, row reference list 등 다른 모든 정보가 저장된다.
     def __init__(self):
@@ -21,9 +27,6 @@ class SqlTransformer(Transformer):
     def TEST_reset_db(self):
         self.row_db.reset()
         self.schema_db.reset()
-
-    def _print_log(self, query: str):
-        print("'{}' requested".format(query))
 
     def _schema_from_key(self, name: str):
         return Schema.schema_from_key(self.schema_db, name)
@@ -105,7 +108,22 @@ class SqlTransformer(Transformer):
         schema.commit_schema(self.schema_db)
 
     def select_query(self, items):
-        table_name = search_item(items, "table_name")
+        reference_list = search_item(items, "table_reference_list")
+
+        def get_table(table_reference: Tree):
+            table_name = table_reference.children[0].children[0].value
+            reference_name = table_reference.children[2].children[0].value \
+                if table_reference.children[2] is not None else None
+            return {
+                "table": table_name,
+                "as": reference_name if reference_name is not None else table_name
+            }
+
+        table_references = list(map(get_table, reference_list.children))
+        print(table_references)
+        # TODO: use table_references
+
+        table_name = search_item_value(items, "table_name")
         if table_name not in self.schema_db.get_table_names():
             raise SelectTableExistenceError(table_name)
         target_schema = Schema.schema_from_key(self.schema_db, table_name)
@@ -118,7 +136,13 @@ class SqlTransformer(Transformer):
             column_names = list(target_schema.columns.keys())
 
         refs = self.schema_db.get_refs(target_schema.name)
-        result = [target_schema.select(self.row_db, ref) for ref in refs]
+
+        where_clause = search_item(items, "where_clause")
+        # rows_all = [target_schema.select(self.row_db, ref) for ref in refs]
+        # Testing for single row
+        rows_all = [target_schema.select(self.row_db, ref) for ref in refs][0:1]
+        result = list(filter(lambda row: where_predicate(row, where_clause), rows_all)) \
+            if where_clause is not None else rows_all
 
         result_table = [cast(List[Union[int, str]], column_names)]
         for row in result:
@@ -131,7 +155,7 @@ class SqlTransformer(Transformer):
         print(items)
         columns_specs_token = items[3]
         # table_name = list(items[2].find_data("table_name"))[0].children[0]
-        table_name = search_item(items, "table_name")
+        table_name = search_item_value(items, "table_name")
         if table_name not in self.schema_db.get_table_names():
             raise NoSuchTable
         target_schema = self._schema_from_key(table_name)
@@ -212,7 +236,7 @@ class SqlTransformer(Transformer):
         pass
 
     def update_query(self, items):
-        self._print_log("UPDATE")
+        _print_log("UPDATE")
 
     def EXIT(self, items):
         sys.exit()

@@ -77,17 +77,21 @@ def test_prereq():
 # 1-2에선 유효한 입력만 가정
 def test_insert_table(capfd):
     run(create_school)
-    insert_sql = """
+    run("""
     insert into school (name, created_at) values(
         "Abydos",
         2019-01-01
     );
+    """)
+    out, _ = capfd.readouterr()
+    assert "The row is inserted" in out
+
+    run("""
     insert into school values(
         "Trinity",
         1980-01-01
     );
-    """
-    run(insert_sql)
+    """)
     out, _ = capfd.readouterr()
     assert "The row is inserted" in out
 
