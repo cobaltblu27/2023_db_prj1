@@ -1,11 +1,12 @@
 import sys
+import itertools
 from typing import List, Union, cast
 
 from lark import Transformer, Tree, Token
 
 from src.DataBase import SchemaDB, RowsDB
 from src.Schema import Schema
-from src.Types import ForeignKey, ColumnSpec, ColumnDict, KeySpec
+from src.Types import ForeignKey, ColumnSpec, ColumnDict, KeySpec, Alias
 from src.errors import *
 from src.parser_tool import where_predicate
 from src.tools import PROMPT, print_desc, tree_to_column_list, print_table
@@ -110,40 +111,84 @@ class SqlTransformer(Transformer):
     def select_query(self, items):
         reference_list = search_item(items, "table_reference_list")
 
-        def get_table(table_reference: Tree):
+        def get_table(table_reference: Tree) -> Alias:
             table_name = table_reference.children[0].children[0].value
             reference_name = table_reference.children[2].children[0].value \
                 if table_reference.children[2] is not None else None
             return {
-                "table": table_name,
-                "as": reference_name if reference_name is not None else table_name
+                "name": table_name,
+                "alias": reference_name if reference_name is not None else table_name
             }
 
         table_references = list(map(get_table, reference_list.children))
-        print(table_references)
+
         # TODO: use table_references
-
-        table_name = search_item_value(items, "table_name")
-        if table_name not in self.schema_db.get_table_names():
-            raise SelectTableExistenceError(table_name)
-        target_schema = Schema.schema_from_key(self.schema_db, table_name)
-
         column_names = []
+        print_all_columns = False
         for subtree in items[1].iter_subtrees():
             if subtree.data == "column_name":
                 column_names.append(subtree.children[0].value)
         if len(column_names) < 1:
-            column_names = list(target_schema.columns.keys())
+            print_all_columns = True
 
-        refs = self.schema_db.get_refs(target_schema.name)
+        rows_all = []
+        column_types = {}
+        for table in table_references:
+            table_name = table["name"]
+            if table_name not in self.schema_db.get_table_names():
+                raise SelectTableExistenceError(table_name)
+            target_schema = Schema.schema_from_key(self.schema_db, table_name)
+
+            if print_all_columns:
+                column_names += map(
+                    lambda n: "{}.{}".format(table["alias"], n),
+                    list(target_schema.columns.keys())
+                )
+
+            refs = self.schema_db.get_refs(target_schema.name)
+
+            rows_table = [target_schema.select(self.row_db, ref) for ref in refs]
+            mapped_rows = [{
+                "{}.{}".format(table["name"], key): value for key, value in row.items()
+            } for row in rows_table]
+            column_types.update({
+                "{}.{}".format(table["name"], key): value["type"] for (key, value) in
+                target_schema.columns.items()
+            })
+            if len(rows_all) < 1:
+                rows_all = mapped_rows
+            else:
+                rows_all = list(itertools.chain.from_iterable(
+                    map(lambda r: map(
+                        lambda m: {**r, **m}, mapped_rows
+                    ), rows_all)
+                ))
+
+        # table_name = search_item_value(items, "table_name")
+        # if table_name not in self.schema_db.get_table_names():
+        #     raise SelectTableExistenceError(table_name)
+        # target_schema = Schema.schema_from_key(self.schema_db, table_name)
+        #
+        # column_names = []
+        # for subtree in items[1].iter_subtrees():
+        #     if subtree.data == "column_name":
+        #         column_names.append(subtree.children[0].value)
+        # if len(column_names) < 1:
+        #     column_names = list(target_schema.columns.keys())
+        #
+        # refs = self.schema_db.get_refs(target_schema.name)
+        #
+        # rows_all = [target_schema.select(self.row_db, ref) for ref in refs]
 
         where_clause = search_item(items, "where_clause")
-        # rows_all = [target_schema.select(self.row_db, ref) for ref in refs]
-        # Testing for single row
-        rows_all = [target_schema.select(self.row_db, ref) for ref in refs][0:1]
-        result = list(filter(lambda row: where_predicate(row, where_clause), rows_all)) \
-            if where_clause is not None else rows_all
+        result = list(filter(
+            lambda row:
+            where_predicate(row, where_clause, table_references, column_types),
+            rows_all
+        )) if where_clause is not None else rows_all
 
+        print("res: ", result)
+        # TODO: apply alias to result
         result_table = [cast(List[Union[int, str]], column_names)]
         for row in result:
             result_table.append(["null" if column not in row else row[column] for column in column_names])

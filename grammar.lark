@@ -44,14 +44,19 @@ IS : "is"i
 OR : "or"i
 AND : "and"i
 // change to comp_op if error happens
-comp_op : "<" | ">" | "=" | ">=" | "<=" | "!="
-EQ: "="
+LESSTHAN : "<"
+LESSEQUAL : "<="
+GREATERTHAN: ">"
+GREATEREQUAL : ">="
+NOTEQUAL: "!="
+EQUAL: "="
+comp_op : LESSTHAN | LESSEQUAL | EQUAL | GREATERTHAN | GREATEREQUAL | NOTEQUAL
+
 SET: "set"i
 INSERT : "insert"i
 INTO : "into"i
 VALUES : "values"i
 DELETE : "delete"i
-
 
 // QUERY
 command : query_list | EXIT ";"
@@ -129,4 +134,4 @@ delete_query: DELETE FROM table_name [where_clause]
 // UPDATE TABLES
 // update table_name set column_name = comparable_value [where clause];
 update_query: UPDATE table_name SET set_list [where_clause]
-set_list: column_name EQ comparable_value ("," set_list)*
+set_list: column_name EQUAL comparable_value ("," set_list)*

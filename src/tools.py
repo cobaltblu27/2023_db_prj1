@@ -36,6 +36,13 @@ def db_keys(db):
     return key_list
 
 
+def trim_str_colons(string: str) -> str:
+    colons = ["'", '"']
+    if string[0] in colons and string[-1] in colons:
+        return string[1:-1]
+    return string
+
+
 # tree_to_column_list input example:
 # Tree(
 #   Token('RULE', 'column_name_list'),

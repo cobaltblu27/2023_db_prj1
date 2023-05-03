@@ -1,24 +1,7 @@
 #!/bin/sh
 source venv/bin/activate
 
-rm -rf DB
-
 python run.py -t "
-create table school (
-  name char(16),
-  created_at date,
-  primary key (name)
-);
-insert into school values(
-  \"Abydos\",
-  2019-01-01
-);
-select * from school;
-insert into school (name, created_at) values(
-  \"Trinity\",
-  1980-01-01
-);
-select * from school;
-drop table school;
-show tables;
-"
+select st.name from student as st, school
+where created_at < 2008-01-01 and
+(not created_at < "1999-01-01") or st.name = 'Alice';"

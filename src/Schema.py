@@ -1,10 +1,11 @@
 import itertools
-from typing import List
+from typing import List, Optional
 
 from src.DataBase import SchemaDB, RowsDB
 from src.Types import ColumnDict, KeySpec, ColumnValue
 from src.errors import InsertColumnExistenceError
-from src.tools import print_desc
+from src.parser_tool import parse_type
+from src.tools import print_desc, trim_str_colons
 
 
 # Schema 클래스는 한 table을 나타내는 역할을 한다. 각 테이블 관련해서 DataBase와
@@ -29,18 +30,14 @@ class Schema:
         column = self.columns[attr_name]
         if column is None:
             return False
-        spec_type = "STR" if column["type"] == "char" else column["type"].upper()
-        return spec_type == val_type.upper()
+        return column["type"] == parse_type(val_type)
 
     def insert(self, schema_db: SchemaDB, db: RowsDB, columns: ColumnValue):
         p_key_list = self.get_pkey_col_list()
         row_refs = schema_db.get_refs(self.name)
         for name, val in columns.items():
             if self.columns[name]["type"] == "char":
-                colons = ["'", '"']
-                col_str = columns[name]
-                if col_str[0] in colons and col_str[-1] in colons:
-                    col_str = col_str[1:-1]
+                col_str = trim_str_colons(columns[name])
                 if self.columns[name]["length"] is not None:
                     col_str = col_str[0:self.columns[name]["length"]]
                 columns[name] = col_str
