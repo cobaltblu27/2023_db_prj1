@@ -62,10 +62,22 @@ insert into student (id, name, school_name, created_at)
 """
 
 
-def test_select():
+def test_select(capfd):
     run(create_school)
     select_script = """
-    select * from 
+    select * from student as st, school
+        where st.school_name = school.name and (
+            st.created_at < 2008-01-01 and
+            (not st.created_at < 1999-01-01) or st.name = 'Alice'
+        );
     """
+    capfd.readouterr()
+    run(select_script)
+    out, err = capfd.readouterr()
+    assert out.count("Alice") == 1
+    assert out.count("Yuzu") == 1
+    assert out.count("Mika") == 1
+    assert "Hifumi" not in out
+    assert "Noah" not in out
 
 

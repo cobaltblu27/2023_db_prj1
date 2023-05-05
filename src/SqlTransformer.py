@@ -122,16 +122,22 @@ class SqlTransformer(Transformer):
 
         table_references = list(map(get_table, reference_list.children))
 
-        # TODO: use table_references
-        column_names = []
+        column_names: List[Alias] = []
         print_all_columns = False
         for subtree in items[1].iter_subtrees():
             if subtree.data == "selected_column":
                 table_name = search_item_value(subtree, "table_name")
-                col_name = search_item_value(subtree, "column_name")
-                column_name = col_name if table_name is None \
+                col_name_list = list(subtree.find_data("column_name"))
+                col_name = col_name_list[0].children[0].value
+                reference_name = col_name if table_name is None \
                     else "{}.{}".format(table_name, col_name)
-                column_names.append(column_name)
+                alias = reference_name
+                if len(col_name_list) > 1:
+                    alias = col_name_list[1].children[0].value
+                column_names.append({
+                    "name": reference_name,
+                    "alias": alias
+                })
         if len(column_names) < 1:
             print_all_columns = True
 
@@ -144,8 +150,15 @@ class SqlTransformer(Transformer):
             target_schema = Schema.schema_from_key(self.schema_db, table_name)
 
             if print_all_columns:
+                def get_alias(key):
+                    column_name = "{}.{}".format(table["alias"], key)
+                    return {
+                        "name": column_name,
+                        "alias": column_name
+                    }
+
                 column_names += map(
-                    lambda n: "{}.{}".format(table["alias"], n),
+                    get_alias,
                     list(target_schema.columns.keys())
                 )
 
@@ -177,7 +190,6 @@ class SqlTransformer(Transformer):
 
         # TODO: put this somewhere else
         def get_column_value(row: ColumnDict, key: str):
-            print(key)
             if key in row:
                 return row[key]
             if "." in key:
@@ -188,7 +200,8 @@ class SqlTransformer(Transformer):
                 )
                 if table_reference is not None:
                     table_name = table_reference["name"]
-                    return row["{}.{}".format(table_name, col)]
+                    key = "{}.{}".format(table_name, col)
+                    return row[key] if key in row else "null"
             else:
                 column_name_matches = list(filter(
                     lambda k: k.split(".")[1] == key,
@@ -200,16 +213,14 @@ class SqlTransformer(Transformer):
                 return row[column_name_matches[0]]
             return "null"
 
-        # TODO: apply alias to result
-        result_table = [cast(List[Union[int, str]], column_names)]
+        result_table = [cast(List[Union[int, str]], [col["alias"] for col in column_names])]
         for row in result:
-            result_table.append([get_column_value(row, column) for column in column_names])
+            result_table.append([get_column_value(row, column["name"]) for column in column_names])
         print_table(result_table)
 
     # Row 정보는 self.row_db에 저장된다. key값은 primary key들의 json이며, 전체 row의
     # primary key값들의 목록은 self.schema_db에 저장된다.
     def insert_query(self, items):
-        print(items)
         columns_specs_token = items[3]
         # table_name = list(items[2].find_data("table_name"))[0].children[0]
         table_name = search_item_value(items, "table_name")
