@@ -126,8 +126,12 @@ class SqlTransformer(Transformer):
         column_names = []
         print_all_columns = False
         for subtree in items[1].iter_subtrees():
-            if subtree.data == "column_name":
-                column_names.append(subtree.children[0].value)
+            if subtree.data == "selected_column":
+                table_name = search_item_value(subtree, "table_name")
+                col_name = search_item_value(subtree, "column_name")
+                column_name = col_name if table_name is None \
+                    else "{}.{}".format(table_name, col_name)
+                column_names.append(column_name)
         if len(column_names) < 1:
             print_all_columns = True
 
@@ -164,22 +168,6 @@ class SqlTransformer(Transformer):
                     ), rows_all)
                 ))
 
-        # table_name = search_item_value(items, "table_name")
-        # if table_name not in self.schema_db.get_table_names():
-        #     raise SelectTableExistenceError(table_name)
-        # target_schema = Schema.schema_from_key(self.schema_db, table_name)
-        #
-        # column_names = []
-        # for subtree in items[1].iter_subtrees():
-        #     if subtree.data == "column_name":
-        #         column_names.append(subtree.children[0].value)
-        # if len(column_names) < 1:
-        #     column_names = list(target_schema.columns.keys())
-        #
-        # refs = self.schema_db.get_refs(target_schema.name)
-        #
-        # rows_all = [target_schema.select(self.row_db, ref) for ref in refs]
-
         where_clause = search_item(items, "where_clause")
         result = list(filter(
             lambda row:
@@ -187,11 +175,35 @@ class SqlTransformer(Transformer):
             rows_all
         )) if where_clause is not None else rows_all
 
-        print("res: ", result)
+        # TODO: put this somewhere else
+        def get_column_value(row: ColumnDict, key: str):
+            print(key)
+            if key in row:
+                return row[key]
+            if "." in key:
+                [alias, col] = key.split(".")[0:2]
+                table_reference = next(
+                    filter(lambda r: r["alias"] == alias, table_references),
+                    None
+                )
+                if table_reference is not None:
+                    table_name = table_reference["name"]
+                    return row["{}.{}".format(table_name, col)]
+            else:
+                column_name_matches = list(filter(
+                    lambda k: k.split(".")[1] == key,
+                    row.keys()
+                ))
+                if len(column_name_matches) > 1:
+                    # ambiguous reference
+                    raise SqlException
+                return row[column_name_matches[0]]
+            return "null"
+
         # TODO: apply alias to result
         result_table = [cast(List[Union[int, str]], column_names)]
         for row in result:
-            result_table.append(["null" if column not in row else row[column] for column in column_names])
+            result_table.append([get_column_value(row, column) for column in column_names])
         print_table(result_table)
 
     # Row 정보는 self.row_db에 저장된다. key값은 primary key들의 json이며, 전체 row의
