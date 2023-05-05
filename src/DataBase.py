@@ -77,7 +77,7 @@ class SchemaDB(DataBase):
             raise Exception
         return json.loads(keys_raw.decode(ENCODING))
 
-    def get_refs(self, name: str) -> List[object]:
+    def get_refs(self, name: str) -> List[dict]:
         pkeys_raw = self.db.get(s2b(name, "pkeys"))
         if pkeys_raw is None:
             return []

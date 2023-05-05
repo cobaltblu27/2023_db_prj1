@@ -58,6 +58,9 @@ insert into student (id, name, school_name, created_at)
   values(\"r\", \"Rabu\", \"Millennium\", 1990-01-01);
 "
 python run.py -t "
-delete from student where (not created_at >= 2000-01-01);
+delete from student where (
+            created_at < 2008-01-01 and
+            (not created_at < 1999-01-01) or name = 'Alice'
+        );
 select * from student;
 "

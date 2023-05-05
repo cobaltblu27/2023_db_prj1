@@ -300,8 +300,43 @@ class SqlTransformer(Transformer):
         print_desc([[table] for table in names])
 
     def delete_query(self, items):
+        table_name = search_item_value(items, "table_name")
+        where_clause = search_item(items, "where_clause")
 
-        pass
+        if table_name not in self.schema_db.get_table_names():
+            raise SelectTableExistenceError(table_name)
+        target_schema = Schema.schema_from_key(self.schema_db, table_name)
+
+        refs = self.schema_db.get_refs(target_schema.name)
+        rows_table = [target_schema.select(self.row_db, ref) for ref in refs]
+        mapped_rows = [{
+            "{}.{}".format(table_name, key): value for key, value in row.items()
+        } for row in rows_table]
+        column_types = {
+            "{}.{}".format(table_name, key): value["type"] for (key, value) in
+            target_schema.columns.items()
+        }
+
+        table_reference = {
+            "name": table_name,
+            "alias": table_name
+        }
+        results = list(filter(
+            lambda row:
+            where_predicate(row, where_clause, [table_reference], column_types),
+            mapped_rows
+        )) if where_clause is not None else mapped_rows
+
+        for result in results:
+            # TODO: predicate check
+            pass
+        for result in results:
+            keys = refs[0].keys()
+            result_key_no_table = {key.split(".")[1]: value for key, value in result.items()}
+            ref = {key: value for key, value in result_key_no_table.items()
+                   if key in keys}
+            target_schema.delete(self.schema_db, self.row_db, ref)
+        print("{} row(s) are deleted".format(PROMPT))
 
     def update_query(self, items):
         _print_log("UPDATE")
