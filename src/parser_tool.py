@@ -128,7 +128,7 @@ def bool_judge_predicate(
             return l_val != r_val
         raise SqlException
     else:
-        null_operand = fetch_type_value(row, predicate, aliases, column_types)
+        _, null_operand = fetch_type_value(row, predicate, aliases, column_types)
         not_comp = len(list(predicate.find_pred(
             lambda t: t.data == "null_operation" and t.children[1] is not None
         ))) > 0
@@ -168,10 +168,10 @@ def fetch_type_value(
             return True
         return target_table_name == table
 
-    key = next(filter(filter_key, row.keys()), None)
+    key = next(filter(filter_key, column_types.keys()), None)
     column_type = column_types[key]
-    value = row[key]
-    if column_type == "date":
+    value = row[key] if key in row else None
+    if column_type == "date" and value is not None:
         [y, m, d] = map(lambda s: int(s), value.split("-"))
         value = date(y, m, d)
     return column_type, value

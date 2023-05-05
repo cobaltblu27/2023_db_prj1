@@ -188,7 +188,6 @@ class SqlTransformer(Transformer):
             rows_all
         )) if where_clause is not None else rows_all
 
-        # TODO: put this somewhere else
         def get_column_value(row: ColumnDict, key: str):
             if key in row:
                 return row[key]
@@ -250,7 +249,6 @@ class SqlTransformer(Transformer):
             if spec["non_null"] and name not in column_dict:
                 raise InsertColumnNonNullableError(name)
 
-        # TODO: add validation. As of prj1-2, no validation is needed
         target_schema.insert(self.schema_db, self.row_db, column_dict)
 
         print("{} The row is inserted".format(PROMPT))

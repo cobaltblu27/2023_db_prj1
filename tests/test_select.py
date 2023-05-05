@@ -35,11 +35,11 @@ create table ref (
 );
 create table apply (
   s_id char (10) not null,
-  l_id int not null,
+  c_id int not null,
   apply_date date,
-  primary key (s_id, l_id),
+  primary key (s_id, c_id),
   foreign key (s_id) references student (id),
-  foreign key (l_id) references club (id)
+  foreign key (c_id) references club (id)
 );
 insert into school (name, created_at) values(
   "Millennium",
@@ -49,16 +49,21 @@ insert into school values(
   "Trinity",
   1980-01-01
 );
+insert into club values(
+  0, "GameDev", 4
+);
 insert into student (id, name, school_name, created_at)
-  values("00", "Alice", "Millennium", 2020-01-01);
+  values("AL-1S", "Alice", "Millennium", 2020-01-01);
 insert into student (id, name, school_name, created_at)
-  values("04", "Yuzu", "Millennium", 2000-01-01);
+  values("Yz", "Yuzu", "Millennium", 2000-01-01);
 insert into student (id, name, school_name, created_at)
-  values("08", "Noah", "Millennium", 2010-01-01);
+  values("N", "Noah", "Millennium", 2010-01-01);
 insert into student (id, name, school_name, created_at)
-  values("michael", "Mika", "Trinity", 2005-01-01);
+  values("Michael", "Mika", "Trinity", 2005-01-01);
 insert into student (id, name, school_name, created_at)
-  values("prr", "Hifumi", "Trinity", 2015-01-01);
+  values("PRR", "Hifumi", "Trinity", 2015-01-01);
+insert into apply values("AL-1S", 0, 2023-05-05);
+insert into apply (s_id, c_id) values("Yz", 0);
 """
 
 
@@ -79,5 +84,51 @@ def test_select(capfd):
     assert out.count("Mika") == 1
     assert "Hifumi" not in out
     assert "Noah" not in out
+
+
+def test_select_2(capfd):
+    run(create_school)
+    select_script = """
+    select st.name as name, school.name, club.name, st.id as S_ID from student as st, school, club, apply
+        where st.school_name = school.name and apply.s_id = st.id and apply.c_id = club.id and (
+            club.name = "GameDev" and (not st.created_at < 2010-01-01 or 1 = 0) and st.created_at <= 2020-01-01
+        );
+    """
+    capfd.readouterr()
+    run(select_script)
+    out, err = capfd.readouterr()
+    assert out.count("Alice") == 1
+    assert "Yuzu" not in out
+    assert "Mika" not in out
+    assert "Hifumi" not in out
+    assert "Noah" not in out
+
+    assert "st.name" not in out
+    assert "S_ID" in out
+
+
+def test_select_3(capfd):
+    run(create_school)
+    select_script = """
+    select st.name as name, school.name, club.name, st.id as S_ID from student as st, school, club, apply
+        where st.school_name = school.name and apply.s_id = st.id and apply.c_id = club.id and (
+            club.name = "GameDev" and apply.apply_date is not null
+        );
+    """
+    capfd.readouterr()
+    run(select_script)
+    out, err = capfd.readouterr()
+    assert out.count("Alice") == 1
+    assert "Yuzu" not in out
+    assert "Mika" not in out
+    assert "Hifumi" not in out
+    assert "Noah" not in out
+
+    assert "st.name" not in out
+    assert "S_ID" in out
+
+
+
+
 
 
