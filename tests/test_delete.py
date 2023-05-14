@@ -51,8 +51,6 @@ insert into school values(
 );
 insert into student (id, name, school_name, created_at)
   values("00", "Alice", "Millennium", 1980-01-01);
-
-
 """
 
 
@@ -86,9 +84,17 @@ def test_no_such_column_where():
 
 def test_delete_all(capfd):
     run(create_school)
+    run("""delete from student;""")
     run("""delete from school;""")
     capfd.readouterr()
     run("select * from school;")
     out, _ = capfd.readouterr()
     assert "Millennium" not in out
     assert "Trinity" not in out
+
+
+def test_delete_integrity():
+    run(create_school)
+    with pytest.raises(DeleteReferentialIntegrityPassed):
+        run("delete from school where name = 'Millennium';")
+

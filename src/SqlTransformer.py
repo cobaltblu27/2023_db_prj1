@@ -269,12 +269,9 @@ class SqlTransformer(Transformer):
             if ref == primary_key:
                 raise InsertDuplicatePrimaryKeyError
         fkeys = target_schema.key_spec["foreign_key"]
-        print(fkeys)
         for fkey in fkeys:
             fkey_dict = {fkey['ref_columns'][idx]: column_dict[key] for idx, key in enumerate(fkey['columns'])}
             reference_pkey_list = self.schema_db.get_refs(fkey['table'])
-            print(reference_pkey_list)
-            print(fkey_dict)
             if fkey_dict not in reference_pkey_list:
                 raise InsertReferentialIntegrityError
 
@@ -373,10 +370,28 @@ class SqlTransformer(Transformer):
             mapped_rows
         )) if where_clause is not None else mapped_rows
 
+        pkeys = target_schema.get_pkey_col_list()
+        integrity_err_cnt = 0
         for result in results:
+            pkey_dict = {key: result["{}.{}".format(table_name, key)] for key in pkeys}
+            reference_tables = self.schema_db.get_table_names()
+            for reference_table in reference_tables:
+                reference_table_schema = Schema.schema_from_key(self.schema_db, reference_table)
+                fkey_spec_list = reference_table_schema.key_spec['foreign_key']
+                fkey_spec = next(filter(lambda spec: table_name == spec['table'], fkey_spec_list), None)
+                if fkey_spec is None:
+                    continue
+                reference_table_pkeys = self.schema_db.get_refs(reference_table)
+                reference_table_rows = [reference_table_schema.select(self.row_db, ref) for ref in
+                                        reference_table_pkeys]
+                for reference_table_row in reference_table_rows:
+                    fkey = {key: reference_table_row[fkey_spec['columns'][idx]] for idx, key in
+                            enumerate(fkey_spec['ref_columns'])}
+                    if fkey == pkey_dict:
+                        integrity_err_cnt += 1
+        if integrity_err_cnt > 0:
+            raise DeleteReferentialIntegrityPassed(integrity_err_cnt)
 
-            # TODO: predicate check
-            pass
         for result in results:
             keys = refs[0].keys()
             result_key_no_table = {key.split(".")[1]: value for key, value in result.items()}

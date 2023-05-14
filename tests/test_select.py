@@ -165,8 +165,8 @@ def test_where_ambiguous(capfd):
     run(create_school)
     delete_script = """
     delete from apply;
-    delete from school;
     delete from student;
+    delete from school;
     """
     select_script = """
     select * from school, student where created_at < 2000-01-01;

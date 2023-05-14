@@ -14,8 +14,6 @@ create table student (
   name char(20) not null,
   school_name char(16) not null,
   created_at date,
-  address char(64),
-  phone_number char(64),
   primary key (id),
   foreign key (school_name) references school(name)
 );
@@ -31,11 +29,11 @@ create table ref (
 );
 create table apply (
   s_id char (10) not null,
-  c_id int not null,
+  l_id int not null,
   apply_date date,
-  primary key (s_id, c_id),
+  primary key (s_id, l_id),
   foreign key (s_id) references student (id),
-  foreign key (c_id) references club (id)
+  foreign key (l_id) references club (id)
 );
 insert into school (name, created_at) values(
   'Millennium',
@@ -45,24 +43,9 @@ insert into school values(
   'Trinity',
   1980-01-01
 );
-insert into club values(
-  0, 'GameDev', 4
-);
 insert into student (id, name, school_name, created_at)
-  values('AL-1S', 'Alice', 'Millennium', 2020-01-01);
-insert into student (id, name, school_name, created_at)
-  values('Yz', 'Yuzu', 'Millennium', 2000-01-01);
-insert into student (id, name, school_name, created_at)
-  values('N', 'Noah', 'Millennium', 2010-01-01);
-insert into student (id, name, school_name, created_at)
-  values('Michael', 'Mika', 'Trinity', 2005-01-01);
-insert into student (id, name, school_name, created_at)
-  values('PRR', 'Hifumi', 'Trinity', 2015-01-01);
-insert into student (id, name, school_name, created_at)
-  values('null', 'Himari', 'Millenium', null);
-
-insert into apply values('AL-1S', 0, 2023-05-05);
-insert into apply (s_id, c_id) values('Yz', 0);
+  values('00', 'Alice', 'Millennium', 1980-01-01);
+delete from school where name = 'Millennium';
 "
 #insert into student (id, name, school_name, created_at)
 #  values(\"00\", \"Alice\", \"Millennium\", 2020-01-01);
