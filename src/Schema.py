@@ -30,17 +30,22 @@ class Schema:
         column = self.columns[attr_name]
         if column is None:
             return False
-        return column["type"] == parse_type(val_type)
+        parsed_type = parse_type(val_type)
+        if column["type"] == parsed_type:
+            return True
+        if not column["non_null"] and parsed_type == "null":
+            return True
+        return False
 
     def insert(self, schema_db: SchemaDB, db: RowsDB, columns: ColumnValue):
         p_key_list = self.get_pkey_col_list()
         row_refs = schema_db.get_refs(self.name)
         for name, val in columns.items():
             if self.columns[name]["type"] == "char":
-                col_str = trim_str_colons(columns[name])
+                col_val = trim_str_colons(columns[name])
                 if self.columns[name]["length"] is not None:
-                    col_str = col_str[0:self.columns[name]["length"]]
-                columns[name] = col_str
+                    col_val = col_val[0:self.columns[name]["length"]]
+                columns[name] = col_val
         ref_dict = {k: v for k, v in columns.items() if k in p_key_list}
         db.put_row(self.name, ref_dict, columns)
         schema_db.put_refs(self.name, row_refs + [ref_dict])

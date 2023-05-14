@@ -120,13 +120,14 @@ comparison_predicate : comp_operand comp_op comp_operand
 comp_operand : comparable_value
              | [table_name "."] column_name
 comparable_value : INT | STR | DATE
+insert_value : INT | STR | DATE | NULL
 null_predicate : [table_name "."] column_name null_operation
 null_operation : IS [NOT] NULL
 
 
 // INSERT
 insert_query: INSERT INTO table_name [column_name_list] VALUES value_list
-value_list: LP comparable_value ("," comparable_value)* RP
+value_list: LP insert_value ("," insert_value)* RP
 
 // DELETE
 delete_query: DELETE FROM table_name [where_clause]

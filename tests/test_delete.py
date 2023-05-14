@@ -84,6 +84,11 @@ def test_no_such_column_where():
         run("""delete from school where school.foo < 2000-01-01;""")
 
 
-def test_delete_all():
+def test_delete_all(capfd):
     run(create_school)
     run("""delete from school;""")
+    capfd.readouterr()
+    run("select * from school;")
+    out, _ = capfd.readouterr()
+    assert "Millennium" not in out
+    assert "Trinity" not in out

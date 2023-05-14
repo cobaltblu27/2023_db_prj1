@@ -20,6 +20,8 @@ create table student (
   name char(20) not null,
   school_name char(16) not null,
   created_at date,
+  address char(64),
+  phone_number char(64),
   primary key (id),
   foreign key (school_name) references school(name)
 );
@@ -62,6 +64,9 @@ insert into student (id, name, school_name, created_at)
   values("Michael", "Mika", "Trinity", 2005-01-01);
 insert into student (id, name, school_name, created_at)
   values("PRR", "Hifumi", "Trinity", 2015-01-01);
+insert into student (id, name, school_name, created_at)
+  values("null", "Himari", "Millenium", null);
+  
 insert into apply values("AL-1S", 0, 2023-05-05);
 insert into apply (s_id, c_id) values("Yz", 0);
 """
@@ -128,7 +133,45 @@ def test_select_3(capfd):
     assert "S_ID" in out
 
 
+def test_select_all(capfd):
+    run(create_school)
+    capfd.readouterr()
+    run("select * from school, student;")
+    out, _ = capfd.readouterr()
+    assert out.count("Alice") == 2
 
 
+def test_select_column_resolve_error():
+    run(create_school)
+    select_script = """
+        select foo from student;
+    """
+    with pytest.raises(SelectColumnResolveError):
+        run(select_script)
 
+
+def test_null_comparison_unknown(capfd):
+    run(create_school)
+    select_script = """
+    select * from student where name = 'Himari' and created_at = created_at;
+    """
+    capfd.readouterr()
+    run(select_script)
+    out, _ = capfd.readouterr()
+    assert "Himari" not in out
+
+
+def test_where_ambiguous(capfd):
+    run(create_school)
+    delete_script = """
+    delete from apply;
+    delete from school;
+    delete from student;
+    """
+    select_script = """
+    select * from school, student where created_at < 2000-01-01;
+    """
+    run(delete_script)
+    with pytest.raises(WhereAmbiguousReference):
+        run(select_script)
 

@@ -4,11 +4,11 @@ from datetime import date
 import lark
 
 from src.Types import Alias, AttributeType, ColumnValue
-from src.errors import WhereIncomparableError, SqlException
+from src.errors import WhereIncomparableError, SqlException, WhereAmbiguousReference
 from src.tools import trim_str_colons
 
 
-def parse_type(col_type: str) -> AttributeType:
+def parse_type(col_type: str) -> Union[AttributeType, Literal["null"]]:
     type_upper = col_type.upper()
     if type_upper == "STR":
         return "char"
@@ -16,6 +16,8 @@ def parse_type(col_type: str) -> AttributeType:
         return "date"
     if type_upper == "INT":
         return "int"
+    if type_upper == "NULL":
+        return "null"
     raise SqlException
 
 
@@ -112,6 +114,8 @@ def bool_judge_predicate(
         r_type, r_val = fetch_type_value(row, operands[1], aliases, column_types)
         if l_type != r_type:
             raise WhereIncomparableError
+        if l_val is None or r_val is None:
+            return False
 
         # print("{}: {} '{}' {}".format(l_type, l_val, op, r_val))
         if op == ">":
@@ -263,8 +267,10 @@ def fetch_type(
             return True
         return target_table_name == table
 
-    key = next(filter(filter_key, column_types.keys()), None)
-    column_type = column_types[key]
+    keys = list(filter(filter_key, column_types.keys()))
+    if len(keys) > 1:
+        raise WhereAmbiguousReference
+    column_type = column_types[keys[0]]
     return column_type
 
 

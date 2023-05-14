@@ -43,23 +43,25 @@ insert into school values(
   \"Trinity\",
   1980-01-01
 );
-insert into student (id, name, school_name, created_at)
-  values(\"00\", \"Alice\", \"Millennium\", 2020-01-01);
-insert into student (id, name, school_name, created_at)
-  values(\"04\", \"Yuzu\", \"Millennium\", 2000-01-01);
-insert into student (id, name, school_name, created_at)
-  values(\"08\", \"Noah\", \"Millennium\", 2010-01-01);
-insert into student (id, name, school_name, created_at)
-  values(\"michael\", \"Mika\", \"Trinity\", 2005-01-01);
-insert into student (id, name, school_name, created_at)
-  values(\"prr\", \"Hifumi\", \"Trinity\", 2015-01-01);
-
-insert into student (id, name, school_name, created_at)
-  values(\"r\", \"Rabu\", \"Millennium\", 1990-01-01);
 "
+#insert into student (id, name, school_name, created_at)
+#  values(\"00\", \"Alice\", \"Millennium\", 2020-01-01);
+#insert into student (id, name, school_name, created_at)
+#  values(\"04\", \"Yuzu\", \"Millennium\", 2000-01-01);
+#insert into student (id, name, school_name, created_at)
+#  values(\"08\", \"Noah\", \"Millennium\", 2010-01-01);
+#insert into student (id, name, school_name, created_at)
+#  values(\"michael\", \"Mika\", \"Trinity\", 2005-01-01);
+#insert into student (id, name, school_name, created_at)
+#  values(\"prr\", \"Hifumi\", \"Trinity\", 2015-01-01);
+#
+#insert into student (id, name, school_name, created_at)
+#  values(\"r\", \"Rabu\", \"Millennium\", 1990-01-01);
+#
+#insert into apply values(\"AL-1S\", 0, 2023-05-05);
+#insert into apply (s_id, c_id) values(\"Yz\", 0);
+#"
 python run.py -t "
-    select st.name as name, school.name, club.name, st.id as S_ID from student as st, school, club, apply
-        where st.school_name = school.name and apply.s_id = st.id and apply.c_id = club.id and (
-            club.name = "GameDev" and (not st.created_at < 2010-01-01 or 1 = 0) and st.created_at <= 2020-01-01
-        );
+        insert into student (id, name, school_name, created_at) values('yk', 'Yuuka', 'Millenium', null);
+        select * from student where created_at is null;
 "

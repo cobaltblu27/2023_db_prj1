@@ -173,6 +173,19 @@ def test_insert_tuple_length_cutoff(capfd):
     assert "0123456789abcdefg" not in out
 
 
+def test_insert_null(capfd):
+    run(create_school)
+    insert_sql = """
+    insert into student (id, name, school_name, created_at) values('yk', 'Yuuka', 'Millenium', null);
+    """
+    run(insert_sql)
+    capfd.readouterr()
+    run("select name from student where created_at is null and name = 'Yuuka';")
+    out, _ = capfd.readouterr()
+    assert "Yuuka" in out
+
+
+
 # def test_insert_pkey_dup():
 #     run(create_school)
 #     insert_sql = """insert into school values("Trinity");"""

@@ -76,7 +76,7 @@ def print_table(table: List[List[Union[str, int]]]):
     _print_separator(column_widths)
     for i, row in enumerate(table):
         for j, cell in enumerate(row):
-            print('|', f"{cell: <{column_widths[j]}}", end=' ')
+            print('|', f"{cell if cell is not None else 'null': <{column_widths[j]}}", end=' ')
         print('|')
         if i == 0:
             _print_separator(column_widths)

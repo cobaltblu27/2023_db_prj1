@@ -1,16 +1,16 @@
-import sys
 import itertools
+import sys
 from typing import List, Union, cast
 
-from lark import Transformer, Tree, Token
+from lark import Transformer, Tree
 
 from src.DataBase import SchemaDB, RowsDB
 from src.Schema import Schema
 from src.Types import ForeignKey, ColumnSpec, ColumnDict, KeySpec, Alias
 from src.errors import *
-from src.parser_tool import where_predicate, bool_type_check_rec
-from src.tools import PROMPT, print_desc, tree_to_column_list, print_table
 from src.parser_tool import search_item_value, search_item
+from src.parser_tool import where_predicate, where_type_check_predicate
+from src.tools import PROMPT, print_desc, tree_to_column_list, print_table
 
 
 # 명령어에 따라 어떤 명령어가 요청되었는지 출력하도록 한다.
@@ -183,7 +183,7 @@ class SqlTransformer(Transformer):
 
         where_clause = search_item(items, "where_clause")
         if where_clause is not None:
-            bool_type_check_rec(where_clause, table_references, column_types)
+            where_type_check_predicate(where_clause, table_references, column_types)
         result = list(filter(
             lambda row:
             where_predicate(row, where_clause, table_references, column_types),
@@ -208,9 +208,12 @@ class SqlTransformer(Transformer):
                     lambda k: k.split(".")[1] == key,
                     row.keys()
                 ))
-                if len(column_name_matches) > 1:
+                match_cnt = len(column_name_matches)
+                if match_cnt > 1:
                     # ambiguous reference
                     raise SqlException
+                if match_cnt == 0:
+                    raise SelectColumnResolveError(key)
                 return row[column_name_matches[0]]
             return "null"
 
@@ -236,7 +239,7 @@ class SqlTransformer(Transformer):
                 if column_spec not in target_schema.columns.keys():
                     raise InsertColumnExistenceError(column_spec)
 
-        input_values_list = items[5].find_data("comparable_value")
+        input_values_list = items[5].find_data("insert_value")
         column_token = [col.children[0] for col in input_values_list]  # {type, value}[]
         column_dict = {}
 
@@ -246,7 +249,7 @@ class SqlTransformer(Transformer):
         for i, column in enumerate(column_specs):
             if not target_schema.validate_type(column, column_token[i].type):
                 raise InsertTypeMismatchError
-            column_dict[column] = column_token[i].value
+            column_dict[column] = None if column_token[i].type == "NULL" else column_token[i].value
         for name, spec in target_schema.columns.items():
             if spec["non_null"] and name not in column_dict:
                 raise InsertColumnNonNullableError(name)
@@ -318,7 +321,7 @@ class SqlTransformer(Transformer):
                 # check references
                 where_table_name = search_item_value(op, "table_name")
                 where_column_name = search_item_value(op, "column_name")
-                print(where_table_name, table_name)
+                # print(where_table_name, table_name)
                 if where_table_name is not None and where_table_name != table_name:
                     raise WhereTableNotSpecified
                 if where_column_name not in target_schema.columns.keys():
@@ -339,7 +342,7 @@ class SqlTransformer(Transformer):
             "alias": table_name
         }
         if where_clause is not None:
-            bool_type_check_rec(where_clause, [table_reference], column_types)
+            where_type_check_predicate(where_clause, [table_reference], column_types)
         results = list(filter(
             lambda row:
             where_predicate(row, where_clause, [table_reference], column_types),
