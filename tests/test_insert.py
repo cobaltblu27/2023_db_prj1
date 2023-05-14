@@ -108,7 +108,7 @@ def test_insert_no_table(capfd):
         "bar"
     );
     """
-    with pytest.raises(NoSuchTable):
+    with pytest.raises(NoSuchTableError):
         run(insert_sql)
 
 

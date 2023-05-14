@@ -224,7 +224,7 @@ class SqlTransformer(Transformer):
         # table_name = list(items[2].find_data("table_name"))[0].children[0]
         table_name = search_item_value(items, "table_name")
         if table_name not in self.schema_db.get_table_names():
-            raise NoSuchTable
+            raise NoSuchTableError
         target_schema = self._schema_from_key(table_name)
         column_specs: List[str] = list(target_schema.columns.keys())
         if columns_specs_token is not None:
@@ -258,7 +258,7 @@ class SqlTransformer(Transformer):
         table_names = self.schema_db.get_table_names()
 
         if table_to_drop not in table_names:
-            raise NoSuchTable
+            raise NoSuchTableError
         for table_name in table_names:
             if table_name == table_to_drop:
                 continue
@@ -273,12 +273,12 @@ class SqlTransformer(Transformer):
             target_schema.delete(self.schema_db, self.row_db, row)
 
         self.schema_db.drop(table_to_drop)
-        print("{} '{}' table is dropped".format(PROMPT, table_name))
+        print("{} '{}' table is dropped".format(PROMPT, table_to_drop))
 
     def _describe_db(self, name: str):
         table_names = self.schema_db.get_table_names()
         if name not in table_names:
-            raise NoSuchTable
+            raise NoSuchTableError
         self._schema_from_key(name).describe()
 
     def explain_query(self, items):
@@ -302,8 +302,27 @@ class SqlTransformer(Transformer):
         where_clause = search_item(items, "where_clause")
 
         if table_name not in self.schema_db.get_table_names():
-            raise SelectTableExistenceError(table_name)
+            raise NoSuchTableError(table_name)
         target_schema = Schema.schema_from_key(self.schema_db, table_name)
+
+        print(where_clause)
+        print(where_clause)
+        ops = where_clause.find_pred(
+            lambda t:
+            isinstance(t, Tree) and t.data == "comp_operand" and any(
+                map(lambda child: isinstance(child, Tree) and child.data == "column_name", t.children))
+        )
+
+        for op in ops:
+            # check references
+            where_table_name = search_item_value(op, "table_name")
+            where_column_name = search_item_value(op, "column_name")
+            print(where_table_name, table_name)
+            if where_table_name is not None and where_table_name != table_name:
+                raise WhereTableNotSpecified
+            if where_column_name not in target_schema.columns.keys():
+                raise WhereColumnNotExist
+            # TODO: check type
 
         refs = self.schema_db.get_refs(target_schema.name)
         rows_table = [target_schema.select(self.row_db, ref) for ref in refs]
@@ -334,7 +353,7 @@ class SqlTransformer(Transformer):
             ref = {key: value for key, value in result_key_no_table.items()
                    if key in keys}
             target_schema.delete(self.schema_db, self.row_db, ref)
-        print("{} row(s) are deleted".format(PROMPT))
+        print("{} {} row(s) are deleted".format(PROMPT, len(results)))
 
     def update_query(self, items):
         _print_log("UPDATE")

@@ -28,7 +28,7 @@ def test_drop_table(capfd):
 
 
 def test_drop_no_such_tbl():
-    with pytest.raises(NoSuchTable):
+    with pytest.raises(NoSuchTableError):
         run("drop table school;")
 
 

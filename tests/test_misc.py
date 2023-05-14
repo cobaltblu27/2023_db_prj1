@@ -35,7 +35,7 @@ def test_desc(capfd):
 
 def test_desc_none():
     run(create_school)
-    with pytest.raises(NoSuchTable):
+    with pytest.raises(NoSuchTableError):
         run("desc asdf;")
 
 

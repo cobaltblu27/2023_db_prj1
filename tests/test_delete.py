@@ -56,7 +56,29 @@ insert into student (id, name, school_name, created_at)
 """
 
 
-def test_delete():
+def test_delete(capfd):
     run(create_school)
+    run("""delete from school where created_at < 2000-01-01;""")
+    capfd.readouterr()
+    run("select * from school;")
+    out, _ = capfd.readouterr()
+    assert "Millennium" in out
+    assert "Trinity" not in out
 
 
+def test_no_such_table():
+    run(create_school)
+    with pytest.raises(NoSuchTableError):
+        run("""delete from foo where created_at < 2000-01-01;""")
+
+
+def test_no_such_table_where():
+    run(create_school)
+    with pytest.raises(WhereTableNotSpecified):
+        run("""delete from school where foo.created_at < 2000-01-01;""")
+
+
+def test_no_such_column_where():
+    run(create_school)
+    with pytest.raises(WhereColumnNotExist):
+        run("""delete from school where school.foo < 2000-01-01;""")

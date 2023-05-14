@@ -184,3 +184,6 @@ def where_predicate(
     # where starts with boolean_expr
     boolean_expr = search_children(where_clause, "boolean_expr")
     return bool_test_rec(row, boolean_expr[0], aliases, column_types)
+
+
+# type check

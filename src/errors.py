@@ -45,7 +45,7 @@ class CharLengthError(SqlException):
     message = "Char length should be over 0"
 
 
-class NoSuchTable(SqlException):
+class NoSuchTableError(SqlException):
     message = "No such table"
 
 
