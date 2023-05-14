@@ -10,7 +10,7 @@ from src.Types import ForeignKey, ColumnSpec, ColumnDict, KeySpec, Alias
 from src.errors import *
 from src.parser_tool import search_item_value, search_item
 from src.parser_tool import where_predicate, where_type_check_predicate
-from src.tools import PROMPT, print_desc, tree_to_column_list, print_table
+from src.tools import PROMPT, print_desc, tree_to_column_list, print_table, trim_str_colons
 
 
 # 명령어에 따라 어떤 명령어가 요청되었는지 출력하도록 한다.
@@ -90,7 +90,10 @@ class SqlTransformer(Transformer):
 
                 if any([ref_col not in ref_schema.columns for ref_col in ref_columns]):
                     raise ReferenceColumnExistenceError
-                if ref_columns != ref_schema.get_pkey_col_list():
+                ref_pkeys = ref_schema.get_pkey_col_list()
+                ref_pkeys.sort()
+                ref_columns.sort()
+                if ref_columns != ref_pkeys:
                     raise ReferenceNonPrimaryKeyError
                 if len(col_list) != len(ref_columns):
                     raise ReferenceTypeError
@@ -249,10 +252,31 @@ class SqlTransformer(Transformer):
         for i, column in enumerate(column_specs):
             if not target_schema.validate_type(column, column_token[i].type):
                 raise InsertTypeMismatchError
-            column_dict[column] = None if column_token[i].type == "NULL" else column_token[i].value
+            col_type = column_token[i].type
+            if col_type == "NULL":
+                column_dict[column] = None
+            elif col_type == "STR":
+                column_dict[column] = trim_str_colons(column_token[i].value)
+            else:
+                column_dict[column] = column_token[i].value
         for name, spec in target_schema.columns.items():
             if spec["non_null"] and name not in column_dict:
                 raise InsertColumnNonNullableError(name)
+
+        refs = self.schema_db.get_refs(target_schema.name)
+        primary_key = {key: column_dict[key] for key in target_schema.get_pkey_col_list()}
+        for ref in refs:
+            if ref == primary_key:
+                raise InsertDuplicatePrimaryKeyError
+        fkeys = target_schema.key_spec["foreign_key"]
+        print(fkeys)
+        for fkey in fkeys:
+            fkey_dict = {fkey['ref_columns'][idx]: column_dict[key] for idx, key in enumerate(fkey['columns'])}
+            reference_pkey_list = self.schema_db.get_refs(fkey['table'])
+            print(reference_pkey_list)
+            print(fkey_dict)
+            if fkey_dict not in reference_pkey_list:
+                raise InsertReferentialIntegrityError
 
         target_schema.insert(self.schema_db, self.row_db, column_dict)
 
@@ -350,6 +374,7 @@ class SqlTransformer(Transformer):
         )) if where_clause is not None else mapped_rows
 
         for result in results:
+
             # TODO: predicate check
             pass
         for result in results:

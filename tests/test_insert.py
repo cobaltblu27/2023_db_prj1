@@ -41,6 +41,11 @@ create table apply (
   foreign key (s_id) references student (id),
   foreign key (l_id) references club (id)
 );
+create table course (
+  name char (16),
+  id int,
+  primary key (id, name)
+);
 """
 
 create_prereq = """
@@ -176,7 +181,11 @@ def test_insert_tuple_length_cutoff(capfd):
 def test_insert_null(capfd):
     run(create_school)
     insert_sql = """
-    insert into student (id, name, school_name, created_at) values('yk', 'Yuuka', 'Millenium', null);
+    insert into school (name, created_at) values(
+      "Millennium",
+      2019-01-01
+    );
+    insert into student (id, name, school_name, created_at) values('yk', 'Yuuka', 'Millennium', null);
     """
     run(insert_sql)
     capfd.readouterr()
@@ -185,21 +194,19 @@ def test_insert_null(capfd):
     assert "Yuuka" in out
 
 
+def test_insert_pkey_dup():
+    run(create_school)
+    insert_sql = """insert into course (id, name) values(99, "latin");"""
+    run(insert_sql)
+    with pytest.raises(InsertDuplicatePrimaryKeyError):
+        run(insert_sql)
 
-# def test_insert_pkey_dup():
-#     run(create_school)
-#     insert_sql = """insert into school values("Trinity");"""
-#     run(insert_sql)
-#     with pytest.raises(InsertDuplicatePrimaryKeyError):
-#         run(insert_sql)
-#
-#
-# def test_insert_ref_integrity_err():
-#     run(create_school)
-#     insert_sql = """
-#     insert into student (id, name, school_name, created_at)
-#         values(39, "Mika", "Trinity", 1980-01-01);
-#     """
-#     with pytest.raises(InsertReferentialIntegrityError):
-#         run(insert_sql)
-#
+
+def test_insert_ref_integrity_err():
+    run(create_school)
+    insert_sql = """
+    insert into student (id, name, school_name, created_at)
+        values("39", "Mika", "Trinity", 1980-01-01);
+    """
+    with pytest.raises(InsertReferentialIntegrityError):
+        run(insert_sql)

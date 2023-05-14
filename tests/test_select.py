@@ -65,7 +65,7 @@ insert into student (id, name, school_name, created_at)
 insert into student (id, name, school_name, created_at)
   values("PRR", "Hifumi", "Trinity", 2015-01-01);
 insert into student (id, name, school_name, created_at)
-  values("null", "Himari", "Millenium", null);
+  values("null", "Himari", "Millennium", null);
   
 insert into apply values("AL-1S", 0, 2023-05-05);
 insert into apply (s_id, c_id) values("Yz", 0);
