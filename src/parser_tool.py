@@ -187,3 +187,91 @@ def where_predicate(
 
 
 # type check
+def bool_type_check_rec(
+        bool_tree: Tree,
+        aliases: List[Alias],
+        column_types: Dict[str, AttributeType]
+) -> bool:
+    # input: boolean_expr | boolean_term | boolean_factor
+    if bool_tree.data == "boolean_expr":
+        # or chain
+        terms = search_children(bool_tree, "boolean_term")
+        return any(map(
+            lambda term: bool_type_check_rec(term, aliases, column_types),
+            terms
+        ))
+    elif bool_tree.data == "boolean_term":
+        # and chain
+        terms = search_children(bool_tree, "boolean_factor")
+        return all(map(
+            lambda term: bool_type_check_rec(term, aliases, column_types),
+            terms
+        ))
+    elif bool_tree.data == "boolean_factor":
+        not_predicate = bool_tree.children[0] is not None
+        test = search_children(bool_tree, "boolean_test")[0]
+        result = bool_type_check_predicate(test, aliases, column_types)
+        return not result if not_predicate else result
+    return True
+
+
+def bool_type_check_predicate(
+        boolean_test: Tree, aliases: List[Alias],
+        column_types: Dict[str, AttributeType]
+):
+    parenthesis = search_children(boolean_test, "parenthesized_boolean_expr")
+    if len(parenthesis) > 0:
+        expr = search_children(parenthesis[0], "boolean_expr")[0]
+        return bool_type_check_rec(expr, aliases, column_types)
+    # comparison_predicate | null_predicate
+    predicate: Tree = boolean_test.children[0].children[0]
+    if predicate.data == "comparison_predicate":
+        operands = list(predicate.find_data("comp_operand"))
+        l_type = fetch_type(operands[0], aliases, column_types)
+        r_type = fetch_type(operands[1], aliases, column_types)
+        if l_type != r_type:
+            raise WhereIncomparableError
+    else:
+        # run fetch_type to check if column exists
+        _ = fetch_type(predicate, aliases, column_types)
+
+
+def fetch_type(
+        operand: Tree, aliases: List[Alias],
+        column_types: Dict[str, AttributeType]
+) -> AttributeType:
+    comparable_value = list(operand.find_data("comparable_value"))
+    if len(comparable_value) > 0:
+        op_type = comparable_value[0].children[0].type
+        return parse_type(op_type)
+
+    target_table_name_value = search_item_value(operand, "table_name")
+    target_alias = next(
+        filter(
+            lambda t: t["alias"] == target_table_name_value,
+            aliases
+        ), None
+    )
+    target_table_name = target_alias["name"] if target_alias is not None else None
+    target_column_name = search_item_value(operand, "column_name")
+
+    def filter_key(k: str):
+        [table, col] = k.split(".")[0:2]
+        if target_column_name != col:
+            return False
+        if target_table_name is None:
+            return True
+        return target_table_name == table
+
+    key = next(filter(filter_key, column_types.keys()), None)
+    column_type = column_types[key]
+    return column_type
+
+
+def where_type_check_predicate(
+        where_clause: Tree, aliases: List[Alias],
+        column_types: Dict[str, AttributeType]
+) -> bool:
+    # where starts with boolean_expr
+    boolean_expr = search_children(where_clause, "boolean_expr")
+    return bool_type_check_rec(boolean_expr[0], aliases, column_types)

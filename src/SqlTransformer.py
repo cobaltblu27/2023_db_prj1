@@ -8,7 +8,7 @@ from src.DataBase import SchemaDB, RowsDB
 from src.Schema import Schema
 from src.Types import ForeignKey, ColumnSpec, ColumnDict, KeySpec, Alias
 from src.errors import *
-from src.parser_tool import where_predicate
+from src.parser_tool import where_predicate, bool_type_check_rec
 from src.tools import PROMPT, print_desc, tree_to_column_list, print_table
 from src.parser_tool import search_item_value, search_item
 
@@ -182,6 +182,8 @@ class SqlTransformer(Transformer):
                 ))
 
         where_clause = search_item(items, "where_clause")
+        if where_clause is not None:
+            bool_type_check_rec(where_clause, table_references, column_types)
         result = list(filter(
             lambda row:
             where_predicate(row, where_clause, table_references, column_types),
@@ -305,24 +307,22 @@ class SqlTransformer(Transformer):
             raise NoSuchTableError(table_name)
         target_schema = Schema.schema_from_key(self.schema_db, table_name)
 
-        print(where_clause)
-        print(where_clause)
-        ops = where_clause.find_pred(
-            lambda t:
-            isinstance(t, Tree) and t.data == "comp_operand" and any(
-                map(lambda child: isinstance(child, Tree) and child.data == "column_name", t.children))
-        )
+        if where_clause is not None:
+            ops = where_clause.find_pred(
+                lambda t:
+                isinstance(t, Tree) and t.data == "comp_operand" and any(
+                    map(lambda child: isinstance(child, Tree) and child.data == "column_name", t.children))
+            )
 
-        for op in ops:
-            # check references
-            where_table_name = search_item_value(op, "table_name")
-            where_column_name = search_item_value(op, "column_name")
-            print(where_table_name, table_name)
-            if where_table_name is not None and where_table_name != table_name:
-                raise WhereTableNotSpecified
-            if where_column_name not in target_schema.columns.keys():
-                raise WhereColumnNotExist
-            # TODO: check type
+            for op in ops:
+                # check references
+                where_table_name = search_item_value(op, "table_name")
+                where_column_name = search_item_value(op, "column_name")
+                print(where_table_name, table_name)
+                if where_table_name is not None and where_table_name != table_name:
+                    raise WhereTableNotSpecified
+                if where_column_name not in target_schema.columns.keys():
+                    raise WhereColumnNotExist
 
         refs = self.schema_db.get_refs(target_schema.name)
         rows_table = [target_schema.select(self.row_db, ref) for ref in refs]
@@ -338,6 +338,8 @@ class SqlTransformer(Transformer):
             "name": table_name,
             "alias": table_name
         }
+        if where_clause is not None:
+            bool_type_check_rec(where_clause, [table_reference], column_types)
         results = list(filter(
             lambda row:
             where_predicate(row, where_clause, [table_reference], column_types),

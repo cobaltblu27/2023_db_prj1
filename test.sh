@@ -58,9 +58,8 @@ insert into student (id, name, school_name, created_at)
   values(\"r\", \"Rabu\", \"Millennium\", 1990-01-01);
 "
 python run.py -t "
-delete from student where (
-            created_at < 2008-01-01 and
-            (not created_at < 1999-01-01) or name = 'Alice'
+    select st.name as name, school.name, club.name, st.id as S_ID from student as st, school, club, apply
+        where st.school_name = school.name and apply.s_id = st.id and apply.c_id = club.id and (
+            club.name = "GameDev" and (not st.created_at < 2010-01-01 or 1 = 0) and st.created_at <= 2020-01-01
         );
-select * from student;
 "

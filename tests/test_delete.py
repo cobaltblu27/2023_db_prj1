@@ -82,3 +82,8 @@ def test_no_such_column_where():
     run(create_school)
     with pytest.raises(WhereColumnNotExist):
         run("""delete from school where school.foo < 2000-01-01;""")
+
+
+def test_delete_all():
+    run(create_school)
+    run("""delete from school;""")
