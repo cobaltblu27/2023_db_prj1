@@ -8,6 +8,7 @@ from src.errors import WhereIncomparableError, SqlException, WhereAmbiguousRefer
 from src.tools import trim_str_colons
 
 
+# 출력해야할 type과 lark로 받아들이는 type의 string이 조금씩 다르므로 통일하기 위한 로직
 def parse_type(col_type: str) -> Union[AttributeType, Literal["null"]]:
     type_upper = col_type.upper()
     if type_upper == "STR":
@@ -20,7 +21,7 @@ def parse_type(col_type: str) -> Union[AttributeType, Literal["null"]]:
         return "null"
     raise SqlException
 
-
+# tree의 child중 특정 타입의 Token의 값을 찾아야 하는 로직이 상당히 많이 쓰였으므로, 이 함수로 분리한다.
 def search_item_value(items: Union[object, list[object]], data_name: str):
     if not isinstance(items, list):
         items = [items]
@@ -114,6 +115,7 @@ def bool_judge_predicate(
         r_type, r_val = fetch_type_value(row, operands[1], aliases, column_types)
         if l_type != r_type:
             raise WhereIncomparableError
+        # comparing null gives unknown, which is false in most sql
         if l_val is None or r_val is None:
             return False
 
@@ -139,6 +141,7 @@ def bool_judge_predicate(
         return null_operand is not None if not_comp else null_operand is None
 
 
+# fetch value needed for evaluation, also parse date type value to python date instance.
 def fetch_type_value(
         row: ColumnValue, operand: Tree, aliases: List[Alias],
         column_types: Dict[str, AttributeType]
@@ -181,6 +184,8 @@ def fetch_type_value(
     return column_type, value
 
 
+# 각 row, parsing 할 where clause, alias 리스트, 각 column의 타입 정보를 받은 뒤,
+# where clause를 파싱하며 해당 row가 조건을 만족하는지 확인한다.
 def where_predicate(
         row: ColumnValue, where_clause: Tree, aliases: List[Alias],
         column_types: Dict[str, AttributeType]
@@ -190,7 +195,9 @@ def where_predicate(
     return bool_test_rec(row, boolean_expr[0], aliases, column_types)
 
 
-# type check
+# 이 아래 있는 함수들은 위의 함수들과 같은 구조로 구현된 type check용 함수
+# 거의 똑같이 구현되었으나, 여기는 타입 체킹만을 한다.
+# 타입체킹 로직을 위의 함수에 포함시키면 row가 없는 경우 에러를 감지하지 못하게 되어 이렇게 복사하였다.
 def bool_type_check_rec(
         bool_tree: Tree,
         aliases: List[Alias],

@@ -114,6 +114,7 @@ class SqlTransformer(Transformer):
     def select_query(self, items):
         reference_list = search_item(items, "table_reference_list")
 
+        # get table and table name aliases; will be needed throughout the evaluation logic
         def get_table(table_reference: Tree) -> Alias:
             table_name = table_reference.children[0].children[0].value
             reference_name = table_reference.children[2].children[0].value \
@@ -127,6 +128,7 @@ class SqlTransformer(Transformer):
 
         column_names: List[Alias] = []
         print_all_columns = False
+        # column정보는 table.column과 alias으로 저장된다.
         for subtree in items[1].iter_subtrees():
             if subtree.data == "selected_column":
                 table_name = search_item_value(subtree, "table_name")
@@ -146,6 +148,7 @@ class SqlTransformer(Transformer):
 
         rows_all = []
         column_types = {}
+        # fetch rows and apply cartesian product
         for table in table_references:
             table_name = table["name"]
             if table_name not in self.schema_db.get_table_names():
@@ -193,6 +196,7 @@ class SqlTransformer(Transformer):
             rows_all
         )) if where_clause is not None else rows_all
 
+        # get actual column values for printing table
         def get_column_value(row: ColumnDict, key: str):
             if key in row:
                 return row[key]
@@ -269,6 +273,7 @@ class SqlTransformer(Transformer):
             if ref == primary_key:
                 raise InsertDuplicatePrimaryKeyError
         fkeys = target_schema.key_spec["foreign_key"]
+        # check if reference actually exists
         for fkey in fkeys:
             fkey_dict = {fkey['ref_columns'][idx]: column_dict[key] for idx, key in enumerate(fkey['columns'])}
             reference_pkey_list = self.schema_db.get_refs(fkey['table'])
@@ -362,6 +367,8 @@ class SqlTransformer(Transformer):
             "name": table_name,
             "alias": table_name
         }
+        # where clause evaluation is same as select, but without multiple tables and table name aliases.
+        # check validity of where clause first, then check each row using where_predicate.
         if where_clause is not None:
             where_type_check_predicate(where_clause, [table_reference], column_types)
         results = list(filter(
@@ -372,6 +379,7 @@ class SqlTransformer(Transformer):
 
         pkeys = target_schema.get_pkey_col_list()
         integrity_err_cnt = 0
+        # scan every result row and every table for fkey integrity
         for result in results:
             pkey_dict = {key: result["{}.{}".format(table_name, key)] for key in pkeys}
             reference_tables = self.schema_db.get_table_names()
